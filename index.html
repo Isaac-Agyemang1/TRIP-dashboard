@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRIP Tool - Node Criticality Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+:root {
+  --bg:#f0f2f5; --panel:#ffffff; --border:#dde3ed;
+  --accent:#1b3a6b; --accent2:#0e7c5b;
+  --text:#1e2d3d; --muted:#7a8fa8;
+  --critical:#c0392b; --high:#e67e22; --medium:#27ae60; --low:#2980b9;
+  --font-h:'Georgia',serif; --font-b:'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-b);font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+header{background:#1b3a6b;border-bottom:2px solid #14306080;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:1000;}
+.header-left{display:flex;align-items:center;gap:14px;}
+.logo-mark{width:36px;height:36px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#1b3a6b;font-family:var(--font-h);flex-shrink:0;}
+.header-title h1{font-family:var(--font-h);font-size:15px;font-weight:700;color:#fff;}
+.header-title p{font-size:11px;color:rgba(255,255,255,0.6);margin-top:1px;}
+.header-nav{display:flex;gap:6px;}
+.nav-btn{background:transparent;border:1px solid rgba(255,255,255,0.25);color:rgba(255,255,255,0.75);padding:5px 14px;border-radius:5px;cursor:pointer;font-size:12px;font-family:var(--font-b);transition:all 0.15s;}
+.nav-btn:hover,.nav-btn.active{background:#fff;border-color:#fff;color:#1b3a6b;font-weight:600;}
+.app-body{display:flex;flex:1;overflow:hidden;}
+.left-panel{width:292px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.panel-section{border-bottom:1px solid var(--border);padding:11px 13px;}
+.panel-label{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);margin-bottom:8px;}
+.topn-row{display:flex;gap:5px;flex-wrap:wrap;}
+.topn-btn{background:var(--bg);border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:var(--font-b);transition:all 0.15s;}
+.topn-btn:hover,.topn-btn.active{background:var(--accent2);border-color:var(--accent2);color:#fff;font-weight:600;}
+.tier-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px;}
+.tier-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.tier-count{margin-left:auto;color:var(--muted);font-size:11px;}
+.layer-toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;cursor:pointer;}
+.layer-toggle-row input[type=checkbox]{accent-color:var(--accent2);width:13px;height:13px;cursor:pointer;flex-shrink:0;}
+.layer-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+.layer-count{margin-left:auto;font-size:10px;color:var(--muted);}
+.weights-scroll{flex:1;overflow-y:auto;padding:11px 13px;}
+.weights-scroll::-webkit-scrollbar{width:3px;}
+.weights-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.weight-group-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin:10px 0 7px;}
+.weight-group-label:first-child{margin-top:0;}
+.weight-row{margin-bottom:9px;}
+.weight-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+.weight-name{font-size:11px;color:var(--text);}
+.weight-val{font-size:11px;font-weight:700;color:var(--accent);min-width:30px;text-align:right;}
+input[type=range]{width:100%;height:3px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);cursor:pointer;transition:transform 0.1s;}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
+.weight-note{font-size:10px;color:var(--muted);margin-top:2px;text-align:center;}
+.btn-row{display:flex;gap:8px;padding:10px 13px;border-top:1px solid var(--border);}
+.btn{flex:1;padding:7px;border-radius:5px;border:none;cursor:pointer;font-size:11px;font-weight:600;font-family:var(--font-b);transition:opacity 0.15s;}
+.btn:hover{opacity:0.85;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-secondary{background:var(--border);color:var(--text);}
+#map{flex:1;z-index:1;}
+.right-panel{width:285px;flex-shrink:0;background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.right-panel-header{padding:11px 13px 9px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.right-panel-header h3{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent);}
+.node-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);padding:20px;text-align:center;}
+.node-empty .icon{font-size:30px;opacity:0.35;}
+.node-empty p{font-size:12px;line-height:1.5;}
+.node-content{flex:1;overflow-y:auto;padding:11px 13px;display:none;}
+.node-content::-webkit-scrollbar{width:3px;}
+.node-content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.node-id{font-size:10px;color:var(--muted);margin-bottom:8px;}
+.tier-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-bottom:10px;}
+.score-big{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:9px 12px;margin-bottom:10px;}
+.score-big-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:2px;}
+.score-big-val{font-size:22px;font-weight:700;font-family:var(--font-h);color:var(--accent);}
+.score-big-pct{font-size:11px;color:var(--muted);margin-top:1px;}
+.section-head{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--accent2);margin:12px 0 6px;}
+.facility-row{padding:5px 0;border-bottom:1px solid var(--border);font-size:11px;}
+.facility-row:last-child{border-bottom:none;}
+.facility-row-top{display:flex;justify-content:space-between;align-items:center;}
+.facility-name{color:var(--text);font-weight:600;}
+.facility-vals{display:flex;gap:8px;align-items:center;}
+.facility-count{background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:10px;font-weight:600;color:var(--accent);min-width:22px;text-align:center;}
+.facility-score{font-size:10px;color:var(--muted);min-width:36px;text-align:right;}
+.facility-names-list{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.5;padding-left:2px;}
+.score-bar-wrap{margin-bottom:7px;}
+.score-bar-header{display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px;}
+.score-bar-label{color:var(--text);}
+.score-bar-pct{color:var(--muted);}
+.score-bar-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.score-bar-fill{height:100%;border-radius:2px;transition:width 0.3s ease;}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:4px;}
+.stat-box{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 9px;}
+.stat-box-label{font-size:9px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.5px;}
+.stat-box-val{font-size:13px;font-weight:700;color:var(--accent);}
+.page{display:none;flex:1;overflow:hidden;}
+.page.active{display:flex;}
+/* Gateway badge */
+.gw-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;margin-bottom:6px;}
+/* Welcome page */
+#page-welcome{flex-direction:column;overflow-y:auto;background:#f5f6f8;}
+.wlc-topbar{background:#1b3a6b;padding:16px 48px;display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.wlc-topbar-logo{width:36px;height:36px;background:#fff;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#1b3a6b;font-family:var(--font-h);flex-shrink:0;}
+.wlc-topbar-text h1{color:#fff;font-family:var(--font-h);font-size:17px;font-weight:700;}
+.wlc-topbar-text p{color:rgba(255,255,255,0.6);font-size:11px;margin-top:1px;}
+.wlc-disclaimer{background:#fff8e1;border-bottom:2px solid #f0c040;padding:8px 48px;font-size:11px;color:#6b4c00;flex-shrink:0;}
+.wlc-disclaimer strong{color:#4a3300;}
+.wlc-body{display:grid;grid-template-columns:1fr 320px;gap:0;padding:32px 40px;width:100%;max-width:1280px;margin:0 auto;}
+.wlc-main{padding-right:32px;}
+.wlc-sidebar{padding-left:28px;border-left:1px solid #dce3ee;}
+.wlc-section{margin-bottom:28px;}
+.wlc-section-title{font-size:11px;font-weight:700;color:#1b3a6b;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid #1b3a6b;padding-bottom:5px;margin-bottom:13px;font-family:var(--font-b);}
+.wlc-p{font-size:13px;line-height:1.8;color:#333;margin-bottom:9px;font-family:var(--font-b);}
+.wlc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;}
+.wlc-stat{background:#fff;border:1px solid #dce3ee;border-radius:6px;padding:13px 14px;text-align:center;}
+.wlc-stat-val{font-family:var(--font-h);font-size:20px;font-weight:700;color:#1b3a6b;}
+.wlc-stat-lbl{font-size:10px;color:#888;margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;}
+.wlc-table{width:100%;border-collapse:collapse;font-size:12px;margin:8px 0;background:#fff;border-radius:6px;overflow:hidden;border:1px solid #dce3ee;}
+.wlc-table th{background:#1b3a6b;color:#fff;font-weight:700;font-size:10px;letter-spacing:0.7px;text-transform:uppercase;padding:8px 11px;text-align:left;}
+.wlc-table td{padding:7px 11px;border-bottom:1px solid #edf1f7;color:#333;vertical-align:top;}
+.wlc-table tr:last-child td{border-bottom:none;}
+.wlc-table tr:hover td{background:#f4f7fc;}
+.wlc-used-yes{color:#1a6e2e;font-weight:600;}
+.wlc-used-no{color:#aaa;}
+.wlc-method-step{display:flex;gap:12px;margin-bottom:13px;align-items:flex-start;}
+.wlc-method-num{width:22px;height:22px;border-radius:50%;background:#1b3a6b;color:#fff;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.wlc-method-title{font-size:13px;font-weight:700;color:#1b3a6b;margin-bottom:3px;font-family:var(--font-b);}
+.wlc-method-body{font-size:12px;color:#555;line-height:1.65;font-family:var(--font-b);}
+.wlc-method-body ul{margin:7px 0 0 16px;padding:0;}
+.wlc-method-body li{margin-bottom:5px;line-height:1.6;}
+.wlc-improve-item{background:#fff;border:1px solid #dce3ee;border-left:3px solid #1b3a6b;border-radius:0 5px 5px 0;padding:10px 13px;margin-bottom:9px;}
+.wlc-improve-tag{display:inline-block;font-size:9px;font-weight:700;background:#e8f0fb;color:#1b3a6b;padding:2px 7px;border-radius:10px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;}
+.wlc-improve-title{font-size:12px;font-weight:700;color:#1b3a6b;margin-bottom:3px;font-family:var(--font-b);}
+.wlc-improve-body{font-size:11px;color:#555;line-height:1.6;font-family:var(--font-b);}
+.wlc-sidebar-card{background:#fff;border:1px solid #dce3ee;border-radius:7px;padding:15px 16px;margin-bottom:16px;}
+.wlc-sidebar-title{font-size:10px;font-weight:700;color:#1b3a6b;text-transform:uppercase;letter-spacing:0.9px;margin-bottom:11px;padding-bottom:6px;border-bottom:1px solid #edf1f7;}
+.wlc-person{margin-bottom:13px;padding-bottom:13px;border-bottom:1px solid #edf1f7;}
+.wlc-person:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.wlc-person-name{font-size:12px;font-weight:700;color:#222;font-family:var(--font-b);}
+.wlc-person-role{font-size:11px;color:#888;margin:2px 0;font-family:var(--font-b);}
+.wlc-person-email{font-size:11px;color:#1b3a6b;font-family:var(--font-b);}
+.wlc-tier-row{display:flex;align-items:center;gap:9px;margin-bottom:8px;font-size:12px;color:#333;font-family:var(--font-b);}
+.wlc-tier-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.wlc-enter-btn{display:block;width:100%;background:#1b3a6b;color:#fff;border:none;padding:11px;border-radius:6px;font-size:13px;font-weight:700;font-family:var(--font-b);cursor:pointer;text-align:center;margin-top:4px;transition:background 0.15s;}
+.wlc-enter-btn:hover{background:#2a5298;}
+#loading{position:fixed;inset:0;background:#1b3a6b;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px;}
+.spinner{width:34px;height:34px;border:3px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+#loading p{color:rgba(255,255,255,0.9);font-size:13px;}
+#loading-detail{font-size:11px;color:rgba(255,255,255,0.55);margin-top:-6px;}
+.leaflet-container{background:#e8e0d8;}
+.leaflet-control-zoom a{background:#fff !important;color:#1b3a6b !important;border-color:#dde3ed !important;font-weight:700;}
+.leaflet-control-zoom a:hover{background:#f0f2f5 !important;}
+.node-tooltip{background:rgba(15,25,45,0.95);border:1px solid #2d3f55;color:#cdd9e5;font-family:var(--font-b);font-size:11px;padding:8px 11px;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.35);pointer-events:none;line-height:1.6;min-width:200px;max-width:300px;}
+.node-tooltip strong{color:#fff;font-size:12px;}
+.node-tooltip .tt-names{font-size:10px;color:#8ba8c4;margin-top:4px;line-height:1.6;}
+.fac-tooltip{background:rgba(15,25,45,0.95);border:1px solid #2d3f55;color:#cdd9e5;font-family:var(--font-b);font-size:11px;padding:6px 10px;border-radius:5px;pointer-events:none;}
+.gw-tooltip{background:rgba(15,25,45,0.97);border:1px solid #2d3f55;color:#cdd9e5;font-family:var(--font-b);font-size:11px;padding:8px 11px;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,0.4);pointer-events:none;line-height:1.6;min-width:210px;max-width:290px;}
+.gw-tooltip strong{color:#fff;font-size:12px;}
+.status-bar{display:none;background:#1b3a6b;border-top:1px solid #14306080;padding:5px 16px;gap:20px;font-size:11px;color:rgba(255,255,255,0.7);flex-shrink:0;}
+.status-item{display:flex;gap:5px;align-items:center;}
+.status-dot{width:6px;height:6px;border-radius:50%;background:#00b894;}
+.tier-toggle{background:transparent;border:1px solid var(--border);color:var(--accent2);width:20px;height:20px;border-radius:4px;cursor:pointer;font-size:10px;display:flex;align-items:center;justify-content:center;margin-left:auto;flex-shrink:0;transition:all 0.15s;padding:0;font-family:var(--font-b);}
+.tier-toggle.active{background:var(--accent2);color:#fff;border-color:var(--accent2);}
+</style>
+</head>
+<body>
+<div id="loading">
+  <div class="logo-mark" style="width:46px;height:46px;font-size:18px;border-radius:10px;background:#1b3a6b;color:#fff;">TR</div>
+  <div class="spinner"></div>
+  <p>Loading node criticality data</p>
+  <p id="loading-detail">Preparing map layers...</p>
+</div>
+<header>
+  <div class="header-left">
+    <div class="logo-mark">TR</div>
+    <div class="header-title">
+      <h1>TRIP Tool - Node Criticality Analysis</h1>
+      <p>Southeastern NC Coastal Plain &nbsp;·&nbsp; Fayetteville to Wilmington</p>
+    </div>
+  </div>
+  <div class="header-nav">
+    <button class="nav-btn" id="btn-map" onclick="showPage('map')">Map</button>
+    <button class="nav-btn" id="btn-welcome" onclick="showPage('welcome')">About</button>
+  </div>
+</header>
+
+<!-- MAP PAGE -->
+<div id="page-map" class="page">
+  <div class="left-panel">
+    <div class="panel-section">
+      <div class="panel-label">Display</div>
+      <div class="topn-row">
+        <button class="topn-btn active" onclick="setTopN(0,this)">All</button>
+        <button class="topn-btn" onclick="setTopN(10,this)">Top 10</button>
+        <button class="topn-btn" onclick="setTopN(20,this)">Top 20</button>
+        <button class="topn-btn" onclick="setTopN(50,this)">Top 50</button>
+        <button class="topn-btn" onclick="setTopN(100,this)">Top 100</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-label">Tier Filter</div>
+      <div class="tier-row"><div class="tier-dot" style="background:var(--critical)"></div>Critical (top 5%)<span class="tier-count" id="cnt-critical">-</span><button class="tier-toggle active" id="tog-critical" onclick="toggleTier('Critical',this)">●</button></div>
+      <div class="tier-row"><div class="tier-dot" style="background:var(--high)"></div>High (75–95th pct)<span class="tier-count" id="cnt-high">-</span><button class="tier-toggle active" id="tog-high" onclick="toggleTier('High',this)">●</button></div>
+      <div class="tier-row"><div class="tier-dot" style="background:var(--medium)"></div>Medium (40–75th pct)<span class="tier-count" id="cnt-medium">-</span><button class="tier-toggle active" id="tog-medium" onclick="toggleTier('Medium',this)">●</button></div>
+      <div class="tier-row"><div class="tier-dot" style="background:var(--low)"></div>Low (bottom 40%)<span class="tier-count" id="cnt-low">-</span><button class="tier-toggle active" id="tog-low" onclick="toggleTier('Low',this)">●</button></div>
+    </div>
+    <div class="panel-section" style="display:none" id="gateway-layers-panel">
+      <div class="panel-label">Gateway Layers</div>
+      <div class="layer-toggle-row">
+        <input type="checkbox" id="gw-hard" onchange="toggleGatewayLayer('hard')">
+        <div class="layer-dot" style="background:#7b0000"></div>
+        <label for="gw-hard" style="cursor:pointer">Validated Hard Chokepoint</label>
+        <span class="layer-count" id="gw-cnt-hard">-</span>
+      </div>
+      <div class="layer-toggle-row">
+        <input type="checkbox" id="gw-structural" onchange="toggleGatewayLayer('structural')">
+        <div class="layer-dot" style="background:#e65100"></div>
+        <label for="gw-structural" style="cursor:pointer">Structural Chokepoint</label>
+        <span class="layer-count" id="gw-cnt-structural">-</span>
+      </div>
+      <div class="layer-toggle-row">
+        <input type="checkbox" id="gw-gateway" onchange="toggleGatewayLayer('gateway')">
+        <div class="layer-dot" style="background:#f9a825"></div>
+        <label for="gw-gateway" style="cursor:pointer">Gateway</label>
+        <span class="layer-count" id="gw-cnt-gateway">-</span>
+      </div>
+      <div class="layer-toggle-row">
+        <input type="checkbox" id="gw-both" onchange="toggleGatewayLayer('both')">
+        <div class="layer-dot" style="background:#6a1b9a"></div>
+        <label for="gw-both" style="cursor:pointer">Both (Critical + Gateway)</label>
+        <span class="layer-count" id="gw-cnt-both">-</span>
+      </div>
+      <p style="font-size:10px;color:var(--muted);margin-top:4px;">Gateway analysis fixed to default weight configuration.</p>
+    </div>
+    <div class="panel-section">
+      <div class="panel-label">Facility Layers</div>
+      <div class="layer-toggle-row"><input type="checkbox" id="lyr-hospitals" onchange="toggleFacilityLayer('Hospitals')" checked><div class="layer-dot" style="background:#e63946"></div><label for="lyr-hospitals" style="cursor:pointer">Hospitals</label><span class="layer-count">26</span></div>
+      <div class="layer-toggle-row"><input type="checkbox" id="lyr-fire" onchange="toggleFacilityLayer('Fire_Stations')" checked><div class="layer-dot" style="background:#ff7043"></div><label for="lyr-fire" style="cursor:pointer">Fire Stations</label><span class="layer-count">356</span></div>
+      <div class="layer-toggle-row"><input type="checkbox" id="lyr-law" onchange="toggleFacilityLayer('Law_Enforcement')" checked><div class="layer-dot" style="background:#3d5afe"></div><label for="lyr-law" style="cursor:pointer">Law Enforcement</label><span class="layer-count">142</span></div>
+      <div class="layer-toggle-row"><input type="checkbox" id="lyr-gas" onchange="toggleFacilityLayer('Gas_Stations')"><div class="layer-dot" style="background:#f9a825"></div><label for="lyr-gas" style="cursor:pointer">Gas Stations</label><span class="layer-count">1,015</span></div>
+      <div class="layer-toggle-row"><input type="checkbox" id="lyr-ncdotb" onchange="toggleFacilityLayer('NCDOT_Buildings')"><div class="layer-dot" style="background:#8d6e63"></div><label for="lyr-ncdotb" style="cursor:pointer">NCDOT Buildings</label><span class="layer-count">347</span></div>
+      <div class="layer-toggle-row"><input type="checkbox" id="lyr-ncdotl" onchange="toggleFacilityLayer('NCDOT_Lands')"><div class="layer-dot" style="background:#78909c"></div><label for="lyr-ncdotl" style="cursor:pointer">NCDOT Lands</label><span class="layer-count">110</span></div>
+      <div class="layer-toggle-row"><input type="checkbox" id="lyr-ncem" onchange="toggleFacilityLayer('NCEM')"><div class="layer-dot" style="background:#ab47bc"></div><label for="lyr-ncem" style="cursor:pointer">NCEM Essential</label><span class="layer-count">11,051</span></div>
+      <div class="layer-toggle-row"><input type="checkbox" id="lyr-poi" onchange="toggleFacilityLayer('SafeGraph_POI')"><div class="layer-dot" style="background:#26a69a"></div><label for="lyr-poi" style="cursor:pointer">SafeGraph POI</label><span class="layer-count">14,650</span></div>
+    </div>
+    <div class="weights-scroll">
+      <div class="weight-group-label">Composite Weights</div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">Emergency Access</span><span class="weight-val" id="wv-emergency">80%</span></div><input type="range" min="0" max="100" value="80" id="w-emergency" oninput="onCompositeChange('emergency')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">Demand (Visit Activity)</span><span class="weight-val" id="wv-demand">20%</span></div><input type="range" min="0" max="100" value="20" id="w-demand" oninput="onCompositeChange('demand')"><div class="weight-note">Emergency + Demand always sum to 100%</div></div>
+      <div class="weight-group-label">Facility Weights</div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">Hospitals</span><span class="weight-val" id="wv-hospitals">50</span></div><input type="range" min="0" max="100" value="50" id="w-hospitals" oninput="onFacilityChange('hospitals')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">NCEM Essential</span><span class="weight-val" id="wv-ncem">40</span></div><input type="range" min="0" max="100" value="40" id="w-ncem" oninput="onFacilityChange('ncem')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">Fire Stations</span><span class="weight-val" id="wv-fire">35</span></div><input type="range" min="0" max="100" value="35" id="w-fire" oninput="onFacilityChange('fire')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">Law Enforcement</span><span class="weight-val" id="wv-law">30</span></div><input type="range" min="0" max="100" value="30" id="w-law" oninput="onFacilityChange('law')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">Gas Stations</span><span class="weight-val" id="wv-gas">20</span></div><input type="range" min="0" max="100" value="20" id="w-gas" oninput="onFacilityChange('gas')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">NCDOT Buildings</span><span class="weight-val" id="wv-ncdotb">15</span></div><input type="range" min="0" max="100" value="15" id="w-ncdotb" oninput="onFacilityChange('ncdotb')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">NCDOT Lands</span><span class="weight-val" id="wv-ncdotl">10</span></div><input type="range" min="0" max="100" value="10" id="w-ncdotl" oninput="onFacilityChange('ncdotl')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">SafeGraph POI</span><span class="weight-val" id="wv-poi">5</span></div><input type="range" min="0" max="100" value="5" id="w-poi" oninput="onFacilityChange('poi')"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="resetWeights()">Reset</button>
+      <button class="btn btn-primary" onclick="exportCSV()">Export CSV</button>
+    </div>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="right-panel">
+    <div class="right-panel-header"><h3>Node Details</h3></div>
+    <div class="node-empty" id="node-empty">
+      <div class="icon">⬡</div>
+      <p>Click any node on the map to view its full criticality breakdown and nearby facilities</p>
+    </div>
+    <div class="node-content" id="node-content">
+      <div class="node-id" id="nd-osmid"></div>
+      <div id="nd-badge" class="tier-badge"></div>
+      <div id="nd-gw-badge" class="gw-badge" style="display:none"></div>
+      <div class="score-big">
+        <div class="score-big-label">Composite Score</div>
+        <div class="score-big-val" id="nd-composite"></div>
+        <div class="score-big-pct" id="nd-pct"></div>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-box-label">Emergency</div><div class="stat-box-val" id="nd-emergency"></div></div>
+        <div class="stat-box"><div class="stat-box-label">Demand Score</div><div class="stat-box-val" id="nd-demand"></div></div>
+      </div>
+      <div id="nd-gateway-section" style="display:none">
+        <div class="section-head">Gateway Analysis</div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="stat-box-label">Access Support</div><div class="stat-box-val" id="nd-participation"></div></div>
+          <div class="stat-box"><div class="stat-box-label">Enables Critical</div><div class="stat-box-val" id="nd-enables"></div></div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat-box"><div class="stat-box-label">Structural Chokepoints</div><div class="stat-box-val" id="nd-struct-count"></div></div>
+          <div class="stat-box"><div class="stat-box-label">Origins at Risk</div><div class="stat-box-val" id="nd-origins-lost"></div></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:6px;" id="nd-enables-names"></div>
+      </div>
+      <div class="section-head">Nearby Facilities</div>
+      <div id="nd-facilities"></div>
+      <div class="section-head">Score Breakdown</div>
+      <div id="nd-bars"></div>
+      <div class="section-head">Annual Visit Demand</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-box-label">Visits 2024</div><div class="stat-box-val" id="nd-visits"></div></div>
+        <div class="stat-box"><div class="stat-box-label">Log Score</div><div class="stat-box-val" id="nd-logscore"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WELCOME PAGE -->
+<div id="page-welcome" class="page">
+  <div class="wlc-topbar">
+    <div class="wlc-topbar-logo">TR</div>
+    <div class="wlc-topbar-text">
+      <h1>TRIP Tool - Transportation Resilience Identification Planning</h1>
+      <p>Node Criticality Analysis &nbsp;·&nbsp; Southeastern NC Coastal Plain &nbsp;·&nbsp; Fayetteville to Wilmington</p>
+    </div>
+  </div>
+  <div class="wlc-disclaimer">
+    <strong>Internal Prototype.</strong> This dashboard is an internal research prototype developed under NC Sea Grant funding. It is intended for team review and stakeholder discussion only and is not approved for public distribution.
+  </div>
+  <div class="wlc-body">
+    <div class="wlc-main">
+      <div class="wlc-section">
+        <div class="wlc-section-title">Study Area and Network</div>
+        <p class="wlc-p">The analysis covers the southeastern North Carolina coastal plain, spanning the Interstate 40 corridor from Fayetteville to Wilmington across Cumberland, Bladen, Columbus, Robeson, Sampson, Duplin, Pender, Brunswick, and New Hanover counties. The road network was extracted from OpenStreetMap and comprises 115,760 intersection nodes and 279,485 directed road segments.</p>
+      </div>
+
+      <div class="wlc-section">
+        <div class="wlc-section-title">Facility Data Sources</div>
+        <table class="wlc-table">
+          <tr><th>Data Source</th><th>Total Features</th><th>Used in Scoring</th><th>Excluded</th></tr>
+          <tr><td>SafeGraph Points of Interest</td><td>59,289</td><td class="wlc-used-yes">14,650 (Essential Tiers 1–3)</td><td class="wlc-used-no">44,639</td></tr>
+          <tr><td>NCEM Critical Facilities</td><td>102,746</td><td class="wlc-used-yes">11,051 (HAZUS 6.1 eligible)</td><td class="wlc-used-no">91,695</td></tr>
+          <tr><td>Hospitals</td><td>26</td><td class="wlc-used-yes">26</td><td class="wlc-used-no">0</td></tr>
+          <tr><td>Fire Stations</td><td>356</td><td class="wlc-used-yes">356</td><td class="wlc-used-no">0</td></tr>
+          <tr><td>Law Enforcement</td><td>142</td><td class="wlc-used-yes">142</td><td class="wlc-used-no">0</td></tr>
+          <tr><td>Gas Stations</td><td>1,015</td><td class="wlc-used-yes">1,015</td><td class="wlc-used-no">0</td></tr>
+          <tr><td>NCDOT Buildings</td><td>347</td><td class="wlc-used-yes">347</td><td class="wlc-used-no">0</td></tr>
+          <tr><td>NCDOT Land Parcels</td><td>110</td><td class="wlc-used-yes">110</td><td class="wlc-used-no">0</td></tr>
+        </table>
+      </div>
+
+      <div class="wlc-section">
+        <div class="wlc-section-title">Data Preparation Methods</div>
+        <div class="wlc-method-step">
+          <div class="wlc-method-num">1</div>
+          <div>
+            <div class="wlc-method-title">POI Classification</div>
+            <div class="wlc-method-body">All 59,289 SafeGraph POIs were classified using NAICS codes into three essential tiers. Tier 1 covers life safety facilities including hospitals, clinics, and pharmacies. Tier 2 covers emergency operations support including grocery stores, hotels, and utilities. Tier 3 covers vulnerable population access including social services and child care. POIs not meeting any tier criterion are excluded from emergency access scoring but retained in the dataset for visualization.</div>
+          </div>
+        </div>
+        <div class="wlc-method-step">
+          <div class="wlc-method-num">2</div>
+          <div>
+            <div class="wlc-method-title">POI Visit Count Correction</div>
+            <div class="wlc-method-body">SafeGraph assigns visit counts to individual POI records. When a building contains multiple listed tenants and the data cannot determine which specific tenant was visited, the same count is assigned to all co-located records. To correct for this, all 14,650 retained POIs were grouped using a standardized address key built from street address, city, and postal code. Of the 14,650 POIs, 6,032 shared their address with at least one other POI across 2,261 unique shared addresses. Two duplication patterns were identified: (1) exact duplication, where every co-located POI carried an identical visit count - for example, 13 providers at one Wilmington address each showing 4,155 visits, inflating the apparent total to 54,015; and (2) partial duplication in multi-provider complexes, where some providers shared the top count and others had distinct values. Within each shared-address group, the maximum observed 2024 visit count was retained as the representative demand signal.</div>
+          </div>
+        </div>
+        <div class="wlc-method-step">
+          <div class="wlc-method-num">3</div>
+          <div>
+            <div class="wlc-method-title">NCEM Classification</div>
+            <div class="wlc-method-body">NCEM features were classified using occupancy type codes from the HAZUS 6.1 Flood Model Technical Manual. Features are marked eligible for scoring if their occupancy type corresponds to emergency operations, essential services, or critical infrastructure under HAZUS 6.1 definitions. Agricultural buildings are excluded from scoring due to their high density in rural areas, which would introduce geographic bias into node scores unrelated to life-safety function.</div>
+          </div>
+        </div>
+        <div class="wlc-method-step">
+          <div class="wlc-method-num">4</div>
+          <div>
+            <div class="wlc-method-title">AADT Conflation</div>
+            <div class="wlc-method-body">
+              <p style="margin-bottom:7px;">The AADT conflation process transfers NCDOT traffic count values onto the OSM road network. This was necessary because NCDOT AADT segments and OSM road edges do not share a common road identifier.</p>
+              <ul>
+                <li>Both NCDOT AADT segments and OSM roads were projected to UTM Zone 17N to support meter-based distance calculations.</li>
+                <li>The statewide NCDOT AADT layer contained 47,735 road segments. It was clipped to the TRIP study area with a 0.05° buffer to retain roads crossing the boundary. This reduced the working dataset to 12,374 segments.</li>
+                <li>NCDOT road segments were reconstructed by grouping records with the same RouteID and ordering them by beginning milepost. This created continuous route geometries for matching.</li>
+                <li>A 50 m gap check was applied during route reconstruction. Adjacent segments separated by more than 50 m were treated as separate route parts to avoid false connections. This identified 1,013 route breaks across 5,420 routes.</li>
+                <li>Reconstructed routes were used only to generate search points. Final AADT values were transferred from the original NCDOT segments to preserve traffic variation along each route.</li>
+                <li>Dense points were generated every 10 m along the reconstructed NCDOT routes. This reduced missed matches on long, curved, or irregular road segments.</li>
+                <li>Only matchable OSM road classes were retained: motorway, trunk, primary, secondary, tertiary, and their link variants. This produced 58,375 eligible OSM edges.</li>
+                <li>A KD-tree nearest-neighbor search identified candidate NCDOT route points within 100 m of each OSM road point.</li>
+                <li>A 30° bearing filter removed candidates with poor directional agreement. This helped avoid false matches between parallel roads, service roads, ramps, and nearby unrelated links.</li>
+                <li>When multiple candidates remained, Hausdorff distance was used to select the best matching NCDOT segment. This compares the overall shape alignment of two road geometries, not just one point location.</li>
+                <li>Each matched OSM edge received the AADT value from its best matching NCDOT segment.</li>
+                <li>A neighbor consistency check flagged OSM edges whose matched RouteID differed from surrounding connected edges. These isolated cases were marked for review.</li>
+                <li>The final match rate was 65.7 percent, with 38,340 of 58,375 eligible OSM edges matched to NCDOT AADT data.</li>
+                <li>The median Hausdorff distance was 2.9 m, indicating strong geometric agreement for most matched roads.</li>
+                <li>Neighbor consistency was high, with 97.8 percent of matched edges agreeing with surrounding connected edges. A total of 685 isolated matches were flagged for review.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="wlc-method-step">
+          <div class="wlc-method-num">5</div>
+          <div>
+            <div class="wlc-method-title">Facility-to-Network Embedding</div>
+            <div class="wlc-method-body">Each facility was assigned to the road network using an edge-based projection procedure. For each facility, the nearest driveable road edge was identified using a spatial index query with expanding search radii (200 m, 500 m, 1,000 m, 2,000 m), followed by true point-to-geometry distance computation. The facility point was then projected perpendicularly onto that edge. Both endpoint nodes of the matched edge received the same weight of 1, reflecting that access direction is unknown and either endpoint independently enables complete access to the facility. Polygon geometries such as NCDOT land parcels were converted to centroids before snapping.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wlc-section">
+        <div class="wlc-section-title">Node Criticality Scoring</div>
+        <p class="wlc-p">Every OSM road network node is scored across two independent dimensions. Storing dimensions independently allows composite weights to be adjusted in the dashboard without rerunning the spatial analysis.</p>
+        <p class="wlc-p"><strong>Emergency Access (80%).</strong> A weighted sum of facility counts assigned to each node. Because the embedding procedure produces two records per facility, counts are deduplicated on the combination of facility identifier, node identifier, and data source before aggregation. The weights reflect relative life-safety priority during a flood event:</p>
+        <table class="wlc-table">
+          <tr><th>Facility Type</th><th>Weight</th></tr>
+          <tr><td>Hospitals</td><td>50</td></tr>
+          <tr><td>NCEM Essential Infrastructure</td><td>40</td></tr>
+          <tr><td>Fire Stations</td><td>35</td></tr>
+          <tr><td>Law Enforcement</td><td>30</td></tr>
+          <tr><td>Gas Stations</td><td>20</td></tr>
+          <tr><td>NCDOT Buildings</td><td>15</td></tr>
+          <tr><td>NCDOT Land Parcels</td><td>10</td></tr>
+          <tr><td>SafeGraph POI (Essential Tiers 1–3)</td><td>5</td></tr>
+        </table>
+        <p class="wlc-p" style="margin-top:10px;"><strong>Demand (20%).</strong> The corrected 2024 visit count for each node is log-transformed (log base 10) before entering the composite score. This was done to make sure the few extremely busy commercial nodes do not dominate the demand dimension.</p>
+        <p class="wlc-p"><strong>Composite score:</strong> (emergency score × 0.80) + (demand score × 0.20).</p>
+        <p class="wlc-p"><strong>Tier assignment.</strong> Percentile ranks are computed only over nodes with a composite score greater than zero. The large population of zero-score nodes is assigned directly to the Low tier. Thresholds applied to the non-zero population:</p>
+        <table class="wlc-table">
+          <tr><th>Tier</th><th>Threshold</th><th>Count</th></tr>
+          <tr><td style="color:#c0392b;font-weight:700;">Critical</td><td>95th percentile and above (top 5%)</td><td>787</td></tr>
+          <tr><td style="color:#e67e22;font-weight:700;">High</td><td>75th to 95th percentile</td><td>3,289</td></tr>
+          <tr><td style="color:#27ae60;font-weight:700;">Medium</td><td>40th to 75th percentile</td><td>5,400</td></tr>
+          <tr><td style="color:#2980b9;font-weight:700;">Low</td><td>Below 40th percentile or zero score</td><td>106,284</td></tr>
+        </table>
+      </div>
+
+      <div class="wlc-section" style="display:none" id="gateway-about-section">
+        <div class="wlc-section-title">Gateway and Chokepoint Analysis</div>
+        <p class="wlc-p">The node criticality analysis identifies locations that are important because of the facilities located near them, such as hospitals, emergency services, government facilities, and other essential destinations. The Gateway and Chokepoint Analysis provides a complementary perspective by identifying locations that are important because of the access they provide to those destinations.</p>
+        <p class="wlc-p">A node may have no facilities directly assigned to it and still be important. Some nodes act as access-support locations that help connect communities to hospitals, emergency facilities, shelters, and other Critical destinations. Disruption at these locations could affect access to important services across the transportation network.</p>
+        <p class="wlc-p">The analysis used 814 Critical destinations consisting of all 787 Critical-tier nodes identified under the default scoring configuration, together with 27 hospital nodes that scored below the Critical threshold. The destination set is fixed to the default scoring configuration.</p>
+
+        <div class="wlc-method-step">
+          <div class="wlc-method-num">1</div>
+          <div>
+            <div class="wlc-method-title">Critical Destination Access Support</div>
+            <div class="wlc-method-body">For each of the 814 Critical destinations, Dijkstra's shortest path algorithm was run on the reversed transportation network with a 50 km search distance. This identifies the road nodes that contribute to access to each Critical destination. Nodes receive higher scores when they repeatedly appear across access routes serving multiple Critical destinations. The resulting metric highlights locations that support connectivity to essential facilities throughout the study area.</div>
+          </div>
+        </div>
+        <div class="wlc-method-step">
+          <div class="wlc-method-num">2</div>
+          <div>
+            <div class="wlc-method-title">Destination-Specific Structural Chokepoint Screening</div>
+            <div class="wlc-method-body">For each Critical destination, the subgraph of all nodes that can reach that destination within 50 km was extracted. Tarjan's depth-first search articulation point algorithm was then applied to each destination-specific subgraph. Nodes identified as articulation points represent locations whose removal would disconnect portions of the reachable network, causing some origins to lose road access to that specific destination. Unlike traditional network-wide topology measures, this screening is performed separately for each Critical destination and therefore identifies destination-specific chokepoints.</div>
+          </div>
+        </div>
+        <div class="wlc-method-step">
+          <div class="wlc-method-num">3</div>
+          <div>
+            <div class="wlc-method-title">Targeted Exact Node-Deletion Validation</div>
+            <div class="wlc-method-body">The top 250 gateway nodes were validated by exact testing. For each candidate node, the node was temporarily removed from the network and Dijkstra's shortest path algorithm was rerun. Nodes whose removal caused one or more origins to lose all access to a Critical destination were classified as Validated Hard Chokepoints. Nodes that remained reachable but whose travel distance increased by 10% or more were classified as Soft Bottlenecks. Of the 250 candidates tested, 174 were Validated Hard Chokepoints.</div>
+          </div>
+        </div>
+        <p class="wlc-p"><strong>Gateway priority classes:</strong></p>
+        <table class="wlc-table">
+          <tr><th>Class</th><th>Count</th><th>Meaning</th></tr>
+          <tr><td style="color:#7b0000;font-weight:700;">Validated Hard Chokepoint</td><td>174</td><td>Exact node-deletion testing confirmed complete access loss for at least one origin-destination pair.</td></tr>
+          <tr><td style="color:#e65100;font-weight:700;">Structural Chokepoint</td><td>51,865</td><td>Destination-specific articulation point screening identified these nodes as structurally important for access to one or more Critical destinations.</td></tr>
+          <tr><td style="color:#f9a825;font-weight:700;">Gateway</td><td>26,770</td><td>Nodes that support access to Critical destinations but were not identified as destination-specific structural chokepoints.</td></tr>
+          <tr><td style="color:#6a1b9a;font-weight:700;">Both (Critical + Gateway)</td><td>720</td><td>Nodes that are themselves Critical destinations and also support access to other Critical destinations.</td></tr>
+        </table>
+      </div>
+
+      <div class="wlc-section">
+        <div class="wlc-section-title">Computation Times</div>
+        <table class="wlc-table">
+          <tr><th>Analysis Step</th><th>Runtime</th></tr>
+          <tr><td>POI Classification and Visit Count Correction</td><td>2 min</td></tr>
+          <tr><td>NCEM Classification</td><td>1 min</td></tr>
+          <tr><td>AADT Conflation</td><td>26 min</td></tr>
+          <tr><td>Facility Network Embedding</td><td>45 min</td></tr>
+          <tr><td>Node Criticality Scoring</td><td>1 min</td></tr>
+          <tr><td>Critical Destination Access Support</td><td>8 min</td></tr>
+          <tr><td>Structural Chokepoint Screening</td><td>12 min</td></tr>
+          <tr><td>Targeted Exact Validation (250 candidates)</td><td>182 min</td></tr>
+          <tr><td>Dashboard Layer Preparation</td><td>&lt;1 min</td></tr>
+        </table>
+      </div>
+
+      <div class="wlc-section">
+        <div class="wlc-section-title">Planned Methodology Improvements</div>
+        <div class="wlc-improve-item">
+          <div class="wlc-improve-tag">POI Deduplication</div>
+          <div class="wlc-improve-title">Polygon Footprint Overlap Detection</div>
+          <div class="wlc-improve-body">The current deduplication uses normalized address keys to group co-located POIs. A planned improvement uses the polygon_wkt field from SafeGraph - the actual building footprint polygon for each POI - to detect spatial overlap between footprints directly. Two POIs whose footprint polygons overlap or share the same building boundary are co-located regardless of how their addresses are formatted. This approach is more robust than address matching for cases where address normalization fails due to formatting inconsistencies, and it can detect co-location across addresses that share a building but use different street number formats.</div>
+        </div>
+        <div class="wlc-improve-item">
+          <div class="wlc-improve-tag">Network</div>
+          <div class="wlc-improve-title">Full-Geometry Network Download</div>
+          <div class="wlc-improve-body">The current network uses a simplified OSMnx graph retaining intersection nodes only. A planned improvement is to test simplify=False so all road geometry nodes are retained. This may improve facility-to-network embedding for facilities located on mid-block road segments. Computation time and memory use are also important constraints, so this change will be evaluated before it is adopted for the full regional workflow.</div>
+        </div>
+        <div class="wlc-improve-item">
+          <div class="wlc-improve-tag">AADT Conflation</div>
+          <div class="wlc-improve-title">Conflation Validation and RoadID Dictionary</div>
+          <div class="wlc-improve-body">A visual validation layer and OSMID-to-NCDOT RoadID dictionary will allow matched AADT values to be verified and traced to source records.</div>
+        </div>
+        <div class="wlc-improve-item" style="display:none" id="gateway-improve-item">
+          <div class="wlc-improve-tag">Gateway Analysis</div>
+          <div class="wlc-improve-title">Expanded Validation Strategies</div>
+          <div class="wlc-improve-body">The current exact validation covers the top 250 gateway nodes because exact node-deletion testing is computationally expensive at regional scale. Applying exact validation to every candidate may not be feasible. Alternative validation approaches are being explored to improve coverage while keeping computation time practical.</div>
+        </div>
+      </div>
+
+      <div class="wlc-section">
+        <div class="wlc-section-title">Summary Statistics</div>
+        <div class="wlc-stats">
+          <div class="wlc-stat"><div class="wlc-stat-val">115,760</div><div class="wlc-stat-lbl">Nodes Scored</div></div>
+          <div class="wlc-stat"><div class="wlc-stat-val">787</div><div class="wlc-stat-lbl">Critical Destinations</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="wlc-sidebar">
+      <div class="wlc-sidebar-card">
+        <button class="wlc-enter-btn" onclick="showPage('map')">Open Dashboard Map &rarr;</button>
+      </div>
+      <div class="wlc-sidebar-card">
+        <div class="wlc-sidebar-title">How to Read the Map</div>
+        <p style="font-size:11px;color:#555;margin-bottom:8px;line-height:1.6;"><strong>Node criticality tiers</strong> (colored circles):</p>
+        <div class="wlc-tier-row"><div class="wlc-tier-dot" style="background:#c0392b"></div>Critical - top 5% of scored nodes</div>
+        <div class="wlc-tier-row"><div class="wlc-tier-dot" style="background:#e67e22"></div>High - 75th to 95th percentile</div>
+        <div class="wlc-tier-row"><div class="wlc-tier-dot" style="background:#27ae60"></div>Medium - 40th to 75th percentile</div>
+        <div class="wlc-tier-row"><div class="wlc-tier-dot" style="background:#2980b9"></div>Low - below 40th percentile</div>
+        <p style="font-size:11px;color:#666;margin-top:10px;line-height:1.6;">Hover over any node to see facility counts and names. Click to view the full breakdown in the right panel.</p>
+      </div>
+      <div class="wlc-sidebar-card">
+        <div class="wlc-sidebar-title">Project Team</div>
+        <div class="wlc-person"><div class="wlc-person-name">Barbara Doll, PhD, PE</div><div class="wlc-person-role">Principal Investigator &nbsp;·&nbsp; NC State University</div><div class="wlc-person-email"><a href="mailto:bdoll@ncsu.edu" style="color:#1b3a6b;text-decoration:none;">bdoll@ncsu.edu</a></div></div>
+        <div class="wlc-person"><div class="wlc-person-name">Jack Kurki-Fox, PhD, PE</div><div class="wlc-person-role">Research Scholar &nbsp;·&nbsp; NC State University</div><div class="wlc-person-email"><a href="mailto:jjkurkif@ncsu.edu" style="color:#1b3a6b;text-decoration:none;">jjkurkif@ncsu.edu</a></div></div>
+        <div class="wlc-person"><div class="wlc-person-name">Venktesh Pandey, PhD</div><div class="wlc-person-role">Principal Investigator &nbsp;·&nbsp; NC A&amp;T State University</div><div class="wlc-person-email"><a href="mailto:vpandey@ncat.edu" style="color:#1b3a6b;text-decoration:none;">vpandey@ncat.edu</a></div></div>
+        <div class="wlc-person"><div class="wlc-person-name">Isaac Agyemang</div><div class="wlc-person-role">Graduate Research Assistant &nbsp;·&nbsp; NC A&amp;T State University</div><div class="wlc-person-email"><a href="mailto:iagyemag@aggies.ncat.edu" style="color:#1b3a6b;text-decoration:none;">iagyemag@aggies.ncat.edu</a></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar" id="status-bar">
+  <div class="status-item"><div class="status-dot"></div><span id="status-nodes">-</span></div>
+  <div class="status-item"><span id="status-shown">-</span></div>
+  <div class="status-item"><span id="status-gateway">-</span></div>
+  <div class="status-item"><span id="status-weights">-</span></div>
+</div>
+
+<script>
+// ── State
+let allNodes=[], scored=[], map=null, markerLayer=null, topN=0;
+let facilityData=[], gatewayData=[];
+const facilityLayers={};
+const gatewayLayers={ hard:null, structural:null, gateway:null, both:null };
+const gatewayVisible={ hard:false, structural:false, gateway:false, both:false };
+const facilityLayerVisible={
+  Hospitals:true, Fire_Stations:true, Law_Enforcement:true,
+  Gas_Stations:false, NCDOT_Buildings:false, NCDOT_Lands:false,
+  NCEM:false, SafeGraph_POI:false
+};
+const tierVisible={Critical:true,High:true,Medium:true,Low:true};
+
+const DEFAULTS={emergency:80,demand:20,hospitals:50,ncem:40,fire:35,law:30,gas:20,ncdotb:15,ncdotl:10,poi:5};
+const TIER_COLORS={Critical:'#c0392b',High:'#e67e22',Medium:'#27ae60',Low:'#2980b9'};
+const TIER_RADIUS={Critical:10,High:8,Medium:6,Low:5};
+const TIER_HIT={Critical:18,High:15,Medium:13,Low:11};
+
+const GW_COLORS={
+  'Validated Hard Chokepoint':'#7b0000',
+  'Validated Soft Bottleneck':'#bf360c',
+  'Structural Chokepoint Candidate':'#e65100',
+  'Gateway':'#f9a825',
+  'Both':'#6a1b9a'
+};
+
+const LAYER_CONFIG={
+  Hospitals:{color:'#e63946',label:'Hospital',emoji:'🏥'},
+  Fire_Stations:{color:'#ff7043',label:'Fire Station',emoji:'🚒'},
+  Law_Enforcement:{color:'#3d5afe',label:'Law Enforcement',emoji:'🚔'},
+  Gas_Stations:{color:'#f9a825',label:'Gas Station',emoji:'⛽'},
+  NCDOT_Buildings:{color:'#8d6e63',label:'NCDOT Building',emoji:'🏢'},
+  NCDOT_Lands:{color:'#78909c',label:'NCDOT Land',emoji:'📍'},
+  NCEM:{color:'#ab47bc',label:'NCEM Facility',emoji:'🏛'},
+  SafeGraph_POI:{color:'#26a69a',label:'POI',emoji:'📌'},
+};
+
+// Gateway node lookup by osmid for right-panel detail
+const gatewayByOsmid={};
+const facilityNamesByNode={};
+const gatewayBuckets={hard:[],structural:[],gateway:[],both:[]};
+const gatewayRenderState={hard:{zoom:null,bounds:null,count:0},structural:{zoom:null,bounds:null,count:0},gateway:{zoom:null,bounds:null,count:0},both:{zoom:null,bounds:null,count:0}};
+const gatewayBuilt={hard:false,structural:false,gateway:false,both:false};
+
+function showPage(name){
+  ['map','welcome'].forEach(p=>{
+    document.getElementById('page-'+p).classList.remove('active');
+    document.getElementById('btn-'+p).classList.remove('active');
+  });
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('btn-'+name).classList.add('active');
+  if(name==='map'&&map) setTimeout(()=>map.invalidateSize(),60);
+}
+
+
+function gatewayLayerColor(key){
+  const colors={hard:'#7b0000',structural:'#e65100',gateway:'#f9a825',both:'#6a1b9a'};
+  return colors[key]||'#f9a825';
+}
+
+function makeGatewayCluster(key, hasCluster){
+  const color=gatewayLayerColor(key);
+  if(!hasCluster) return L.layerGroup();
+  return L.markerClusterGroup({
+    chunkedLoading:true,
+    chunkInterval:120,
+    chunkDelay:40,
+    maxClusterRadius:42,
+    spiderfyOnMaxZoom:true,
+    showCoverageOnHover:false,
+    removeOutsideVisibleBounds:true,
+    animate:false,
+    iconCreateFunction:cluster=>L.divIcon({
+      html:`<div style="background:${color};color:#fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid rgba(255,255,255,0.85);box-shadow:0 2px 5px rgba(0,0,0,0.35)">${cluster.getChildCount()}</div>`,
+      className:'',
+      iconSize:[30,30]
+    })
+  });
+}
+
+function initMap(){
+  map=L.map('map',{center:[34.5,-78.5],zoom:8,zoomControl:true,preferCanvas:true});
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'&copy; OpenStreetMap contributors',maxZoom:19
+  }).addTo(map);
+  markerLayer=L.layerGroup().addTo(map);
+
+  const hasCluster=typeof L.markerClusterGroup==='function';
+
+  // Gateway layers use the same marker clustering behavior as the large
+  // NCEM and SafeGraph POI layers. This prevents 20k–50k gateway points
+  // from rendering as individual markers at low zoom levels.
+  Object.keys(gatewayLayers).forEach(k=>{
+    gatewayLayers[k]=makeGatewayCluster(k, hasCluster);
+  });
+
+
+  Object.keys(LAYER_CONFIG).forEach(src=>{
+    const cfg=LAYER_CONFIG[src];
+    const useClusters=hasCluster&&(src==='NCEM'||src==='SafeGraph_POI'||src==='Gas_Stations');
+    if(useClusters){
+      facilityLayers[src]=L.markerClusterGroup({
+        maxClusterRadius:40,
+        iconCreateFunction:count=>L.divIcon({
+          html:`<div style="background:${cfg.color};color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid rgba(255,255,255,0.8)">${count.getChildCount()}</div>`,
+          className:'',iconSize:[28,28]
+        })
+      });
+    } else {
+      facilityLayers[src]=L.layerGroup();
+    }
+    if(facilityLayerVisible[src]) facilityLayers[src].addTo(map);
+  });
+}
+
+function loadData(){
+  const detail=document.getElementById('loading-detail');
+  Papa.parse('enriched_nodes_phase2.csv',{
+    download:true,header:true,dynamicTyping:true,skipEmptyLines:true,
+    complete(results){
+      detail.textContent='Processing '+results.data.length.toLocaleString()+' nodes...';
+      processData(results.data);
+      loadFacilityLayers(detail);
+    },
+    error(){
+      document.getElementById('loading').innerHTML=`
+        <div style="text-align:center;color:#fff;padding:40px;">
+          <div style="font-size:36px;margin-bottom:16px;">⚠</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Data files not found</div>
+          <div style="font-size:13px;opacity:0.75;line-height:1.8;">
+            Make sure all four files are in the same folder as this HTML file:<br>
+            <code style="background:rgba(255,255,255,0.15);padding:2px 8px;border-radius:4px;">enriched_nodes_phase2.csv</code><br>
+            <code style="background:rgba(255,255,255,0.15);padding:2px 8px;border-radius:4px;">facility_layers.csv</code><br>
+            <code style="background:rgba(255,255,255,0.15);padding:2px 8px;border-radius:4px;">gateway_layers.csv</code><br><br>
+            Open via Live Server in VS Code, not by double-clicking the file.
+          </div>
+        </div>`;
+    }
+  });
+}
+
+function loadFacilityLayers(detail){
+  detail.textContent='Loading facility layers...';
+  Papa.parse('facility_layers.csv',{
+    download:true,header:true,dynamicTyping:true,skipEmptyLines:true,
+    complete(results){
+      facilityData=results.data;
+      buildFacilityNameLookup();
+      setTimeout(()=>{ buildFacilityLayers(); },50);
+    },
+    error(){ loadGatewayLayers(); }
+  });
+}
+
+function loadGatewayLayers(){
+  const detail=document.getElementById('loading-detail');
+  if(detail) detail.textContent='Loading gateway layers...';
+  Papa.parse('gateway_layers.csv',{
+    download:true,header:true,dynamicTyping:true,skipEmptyLines:true,
+    complete(results){
+      gatewayData=results.data;
+      setTimeout(()=>{ buildGatewayLayers(); finishLoad(); },50);
+    },
+    error(){ finishLoad(); }
+  });
+}
+
+function buildGatewayLayers(){
+  Object.values(gatewayLayers).forEach(lg=>lg.clearLayers());
+  Object.keys(gatewayBuckets).forEach(k=>gatewayBuckets[k]=[]);
+  Object.keys(gatewayBuilt).forEach(k=>gatewayBuilt[k]=false);
+  Object.keys(gatewayRenderState).forEach(k=>gatewayRenderState[k]={zoom:null,bounds:null,count:0,total:0});
+
+  const counts={hard:0,structural:0,gateway:0,both:0};
+
+  gatewayData.forEach(g=>{
+    const lat=+g.lat||+g.y, lon=+g.lon||+g.x;
+    if(isNaN(lat)||isNaN(lon)) return;
+
+    const role=g.node_role||'';
+    const cls=g.gateway_priority_class||'';
+    const osmid=String(g.osmid||'').replace(/\.0$/,'');
+    gatewayByOsmid[osmid]=g;
+
+    const item={lat,lon,g,cls,role};
+    if(role==='Both') gatewayBuckets.both.push(item);
+    else if(cls==='Validated Hard Chokepoint'||cls==='Validated Soft Bottleneck') gatewayBuckets.hard.push(item);
+    else if(cls==='Structural Chokepoint Candidate') gatewayBuckets.structural.push(item);
+    else gatewayBuckets.gateway.push(item);
+  });
+
+  counts.hard=gatewayBuckets.hard.length;
+  counts.structural=gatewayBuckets.structural.length;
+  counts.gateway=gatewayBuckets.gateway.length;
+  counts.both=gatewayBuckets.both.length;
+
+  document.getElementById('gw-cnt-hard').textContent=counts.hard.toLocaleString();
+  document.getElementById('gw-cnt-structural').textContent=counts.structural.toLocaleString();
+  document.getElementById('gw-cnt-gateway').textContent=counts.gateway.toLocaleString();
+  document.getElementById('gw-cnt-both').textContent=counts.both.toLocaleString();
+}
+
+function makeGatewayMarker(item){
+  const {lat,lon,g,cls,role}=item;
+  const color=GW_COLORS[cls]||GW_COLORS[role]||GW_COLORS['Gateway']||'#f9a825';
+  const icon=L.divIcon({
+    html:`<div style="background:${color};border-radius:50%;width:14px;height:14px;border:2px solid rgba(255,255,255,0.9);box-shadow:0 1px 4px rgba(0,0,0,0.5);opacity:0.9"></div>`,
+    className:'',
+    iconSize:[14,14],
+    iconAnchor:[7,7]
+  });
+  const marker=L.marker([lat,lon],{icon});
+  const tip=`<div class="gw-tooltip"><strong>${cls||role||'Gateway'}</strong><br>Access Support: ${Number(g.participation_score||0).toLocaleString()}<br>Enables ${g.enables_critical_count||0} Critical destinations${+g.validated_origins_lost_total>0?'<br>Origins at risk: '+Number(g.validated_origins_lost_total).toLocaleString():''}</div>`;
+  marker.bindTooltip(tip,{sticky:true,className:'',opacity:1,offset:[10,0]});
+  marker.on('click',()=>showGatewayDetail(g));
+  return marker;
+}
+
+function populateGatewayLayer(key){
+  if(gatewayBuilt[key]||!gatewayLayers[key]) return;
+  const items=gatewayBuckets[key]||[];
+  const markers=items.map(makeGatewayMarker);
+
+  if(typeof gatewayLayers[key].addLayers==='function') gatewayLayers[key].addLayers(markers);
+  else markers.forEach(m=>gatewayLayers[key].addLayer(m));
+
+  gatewayBuilt[key]=true;
+  gatewayRenderState[key]={zoom:null,bounds:null,count:items.length,total:items.length};
+}
+
+function updateGatewayLayer(key){
+  if(!map||!gatewayVisible[key]||!gatewayLayers[key]) return;
+  populateGatewayLayer(key);
+  updateStatus();
+}
+
+function updateVisibleGatewayLayers(){
+  Object.keys(gatewayVisible).forEach(key=>{
+    if(gatewayVisible[key]) updateGatewayLayer(key);
+  });
+}
+
+function toggleGatewayLayer(key){
+  const visible=document.getElementById('gw-'+key).checked;
+  gatewayVisible[key]=visible;
+
+  if(visible){
+    populateGatewayLayer(key);
+    if(!map.hasLayer(gatewayLayers[key])) gatewayLayers[key].addTo(map);
+  } else {
+    map.removeLayer(gatewayLayers[key]);
+  }
+  updateStatus();
+}
+
+function buildFacilityNameLookup(){
+  Object.keys(facilityNamesByNode).forEach(k=>delete facilityNamesByNode[k]);
+
+  facilityData.forEach(f=>{
+    const nodeRaw=f.assigned_node_id||f.osmid||f.node_id||f.nearest_node||'';
+    const node=String(nodeRaw).replace(/\.0$/,'').trim();
+    const src=f.data_source||'';
+    if(!node||!src) return;
+
+    const name=String(f.location_name||f.name||f.facility||f.facility_id||src).trim();
+    if(!name||name==='nan'||name==='None') return;
+
+    if(!facilityNamesByNode[node]) facilityNamesByNode[node]={};
+    if(!facilityNamesByNode[node][src]) facilityNamesByNode[node][src]=new Set();
+    facilityNamesByNode[node][src].add(name);
+  });
+}
+
+function getFacilityNamesForNode(n, source, directNames){
+  const direct=directNames?String(directNames).trim():'';
+  if(direct&&direct!=='nan'&&direct!=='None') return direct;
+
+  const node=String(n.osmid||'').replace(/\.0$/,'').trim();
+  const srcSet=facilityNamesByNode[node]&&facilityNamesByNode[node][source];
+  if(srcSet&&srcSet.size>0){
+    return Array.from(srcSet).sort().join(' | ');
+  }
+
+  return '';
+}
+
+function buildFacilityLayers(){
+  Object.values(facilityLayers).forEach(lg=>lg.clearLayers());
+  const bySource={};
+  facilityData.forEach(f=>{
+    if(!bySource[f.data_source]) bySource[f.data_source]=[];
+    bySource[f.data_source].push(f);
+  });
+
+  const sourceEntries=Object.entries(bySource);
+  let srcIdx=0;
+
+  function nextSource(){
+    if(srcIdx>=sourceEntries.length){
+      // All facility sources built - proceed to gateway layers
+      loadGatewayLayers();
+      return;
+    }
+    const [src,rows]=sourceEntries[srcIdx++];
+    if(!facilityLayers[src]){ nextSource(); return; }
+    const cfg=LAYER_CONFIG[src]||{color:'#aaa',label:src,emoji:'📍'};
+    const markers=[];
+    rows.forEach(f=>{
+      const lat=+f.lat, lon=+f.lon;
+      if(isNaN(lat)||isNaN(lon)) return;
+      const name=f.location_name||src;
+      const icon=L.divIcon({
+        html:`<div style="background:${cfg.color};border-radius:50%;width:14px;height:14px;border:2px solid rgba(255,255,255,0.9);box-shadow:0 1px 3px rgba(0,0,0,0.35)"></div>`,
+        className:'',iconSize:[14,14],iconAnchor:[7,7]
+      });
+      const marker=L.marker([lat,lon],{icon});
+      marker.bindTooltip(
+        `<div class="fac-tooltip"><strong>${cfg.emoji} ${cfg.label}</strong><br>${name}</div>`,
+        {sticky:true,className:'',opacity:1,offset:[10,0]}
+      );
+      markers.push(marker);
+    });
+    if(typeof facilityLayers[src].addLayers==='function'){ facilityLayers[src].addLayers(markers); }
+    else{ markers.forEach(m=>facilityLayers[src].addLayer(m)); }
+    // Yield between sources so the browser stays responsive
+    setTimeout(nextSource, 0);
+  }
+
+  nextSource();
+}
+
+function toggleFacilityLayer(src){
+  const visible=document.getElementById('lyr-'+srcToId(src)).checked;
+  facilityLayerVisible[src]=visible;
+  if(visible){ facilityLayers[src].addTo(map); }
+  else { map.removeLayer(facilityLayers[src]); }
+}
+
+function srcToId(src){
+  const m={Hospitals:'hospitals',Fire_Stations:'fire',Law_Enforcement:'law',
+    Gas_Stations:'gas',NCDOT_Buildings:'ncdotb',NCDOT_Lands:'ncdotl',
+    NCEM:'ncem',SafeGraph_POI:'poi'};
+  return m[src]||src.toLowerCase();
+}
+
+function finishLoad(){
+  document.getElementById('loading').style.display='none';
+  document.getElementById('status-bar').style.display='flex';
+  showPage('welcome');
+  renderMap();
+  updateTierCounts();
+  updateStatus();
+}
+
+
+
+
+function processData(rows){
+  allNodes=rows.filter(r=>r.y&&r.x&&!isNaN(+r.y)&&!isNaN(+r.x));
+  recompute();
+}
+
+function recompute(){
+  const we=+document.getElementById('w-emergency').value/100;
+  const wd=+document.getElementById('w-demand').value/100;
+  const wH=+document.getElementById('w-hospitals').value;
+  const wNC=+document.getElementById('w-ncem').value;
+  const wF=+document.getElementById('w-fire').value;
+  const wL=+document.getElementById('w-law').value;
+  const wG=+document.getElementById('w-gas').value;
+  const wNB=+document.getElementById('w-ncdotb').value;
+  const wNL=+document.getElementById('w-ncdotl').value;
+  const wP=+document.getElementById('w-poi').value;
+
+  scored=allNodes.map(n=>{
+    const nh=+(n.n_hospitals||0),nnc=+(n.n_ncem||n.n_ncem_essential||0),nf=+(n.n_fire_stations||0),nl=+(n.n_law_enforcement||0),ng=+(n.n_gas_stations||0),nnb=+(n.n_ncdot_buildings||0),nnl=+(n.n_ncdot_lands||0),np=+(n.n_safegraph_poi||0),vis=+(n.poi_visits_2024_corrected||0);
+    const sh=nh*wH,snc=nnc*wNC,sf=nf*wF,sl=nl*wL,sg=ng*wG,snb=nnb*wNB,snl=nnl*wNL,sp=np*wP;
+    const emerg=sh+snc+sf+sl+sg+snb+snl+sp;
+    const demand=Math.log10(vis+1);
+    const comp=emerg*we+demand*wd;
+    return{...n,_emerg:emerg,_demand:demand,_comp:comp,_sh:sh,_snc:snc,_sf:sf,_sl:sl,_sg:sg,_snb:snb,_snl:snl,_sp:sp};
+  });
+
+  const nonZero=scored.filter(n=>n._comp>0);
+  const nonZeroSorted=nonZero.map(n=>n._comp).sort((a,b)=>a-b);
+  const nzLen=nonZeroSorted.length;
+
+  // Binary search equivalent to numpy searchsorted(side='right') - 1
+  function bsearch(arr, val) {
+    let lo = 0, hi = arr.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (arr[mid] <= val) lo = mid + 1; else hi = mid; }
+    return lo - 1;
+  }
+
+  scored.forEach(n => {
+    if (n._comp <= 0) { n._pct = 0; n._tier = 'Low'; return; }
+    const idx = bsearch(nonZeroSorted, n._comp);
+    n._pct  = (idx / nzLen) * 100;
+    n._tier = n._pct >= 95 ? 'Critical' : n._pct >= 75 ? 'High' : n._pct >= 40 ? 'Medium' : 'Low';
+  });
+}
+
+function renderMap(){
+  markerLayer.clearLayers();
+  let toShow=scored;
+  if(topN>0) toShow=[...scored].sort((a,b)=>b._comp-a._comp).slice(0,topN);
+
+  ['Low','Medium','High','Critical'].forEach(tier=>{
+    if(!tierVisible[tier]) return;
+    toShow.filter(n=>n._tier===tier).forEach(n=>{
+      const r=TIER_RADIUS[tier];
+      const hr=TIER_HIT[tier];
+      const nameLines=buildNameLines(n);
+      const tip=`<div class="node-tooltip">
+        <strong style="color:${TIER_COLORS[tier]}">${tier} Node</strong><br>
+        Score: ${n._comp.toFixed(1)} &nbsp;·&nbsp; ${n._pct.toFixed(1)}th pct<br>
+        <span style="font-size:10px;color:#8ba8c4">Hosp: ${n.n_hospitals||0} &nbsp; Fire: ${n.n_fire_stations||0} &nbsp; Law: ${n.n_law_enforcement||0} &nbsp; NCEM: ${+(n.n_ncem||n.n_ncem_essential||0)} &nbsp; POI: ${n.n_safegraph_poi||0}</span>
+        ${nameLines?`<div class="tt-names">${nameLines}</div>`:''}
+      </div>`;
+      const hit=L.circleMarker([+n.y,+n.x],{radius:hr,fillColor:'transparent',color:'transparent',weight:0,fillOpacity:0});
+      const vis=L.circleMarker([+n.y,+n.x],{radius:r,fillColor:TIER_COLORS[tier],color:tier==='Critical'?'rgba(255,255,255,0.6)':'transparent',weight:tier==='Critical'?1:0,fillOpacity:tier==='Low'?0.5:0.88});
+      hit.bindTooltip(tip,{sticky:true,className:'',opacity:1,offset:[12,0]});
+      hit.on('click',()=>showNodeDetail(n));
+      vis.on('click',()=>showNodeDetail(n));
+      markerLayer.addLayer(vis);
+      markerLayer.addLayer(hit);
+    });
+  });
+  updateTierCounts();
+  updateStatus();
+}
+
+function buildNameLines(n){
+  const lines=[];
+  const src=[
+    {emoji:'🏥',label:'Hospitals',source:'Hospitals',count:+(n.n_hospitals||0),names:getFacilityNamesForNode(n,'Hospitals',n.names_hospitals)},
+    {emoji:'🚒',label:'Fire',source:'Fire_Stations',count:+(n.n_fire_stations||0),names:getFacilityNamesForNode(n,'Fire_Stations',n.names_fire_stations)},
+    {emoji:'🚔',label:'Law',source:'Law_Enforcement',count:+(n.n_law_enforcement||0),names:getFacilityNamesForNode(n,'Law_Enforcement',n.names_law_enforcement)},
+    {emoji:'🏛',label:'NCEM',source:'NCEM',count:+(n.n_ncem||n.n_ncem_essential||0),names:getFacilityNamesForNode(n,'NCEM',n.names_ncem)},
+    {emoji:'⛽',label:'Gas',source:'Gas_Stations',count:+(n.n_gas_stations||0),names:getFacilityNamesForNode(n,'Gas_Stations',n.names_gas_stations)},
+    {emoji:'🏢',label:'NCDOT Bldg',source:'NCDOT_Buildings',count:+(n.n_ncdot_buildings||0),names:getFacilityNamesForNode(n,'NCDOT_Buildings',n.names_ncdot_buildings)},
+    {emoji:'📍',label:'NCDOT Land',source:'NCDOT_Lands',count:+(n.n_ncdot_lands||0),names:getFacilityNamesForNode(n,'NCDOT_Lands',n.names_ncdot_lands)},
+    {emoji:'📌',label:'POI',source:'SafeGraph_POI',count:+(n.n_safegraph_poi||0),names:getFacilityNamesForNode(n,'SafeGraph_POI',n.names_safegraph_poi||n.names_poi||n.safegraph_poi_names)},
+  ];
+  src.forEach(s=>{
+    if(s.count===0) return;
+    const nm=s.names?String(s.names).trim():'';
+    const hasNames=nm!==''&&nm!=='nan';
+    if(hasNames){ lines.push(`${s.emoji} ${s.label} (${s.count}): ${truncNames(nm,2)}`); }
+    else { lines.push(`${s.emoji} ${s.label}: ${s.count}`); }
+  });
+  return lines.join('<br>');
+}
+
+function truncNames(pipe,maxCount){
+  if(!pipe) return '';
+  const parts=pipe.split(' | ').filter(Boolean);
+  if(parts.length<=maxCount) return parts.join(', ');
+  return parts.slice(0,maxCount).join(', ')+` +${parts.length-maxCount} more`;
+}
+
+function showGatewayDetail(g){
+  document.getElementById('node-empty').style.display='none';
+  document.getElementById('node-content').style.display='block';
+  document.getElementById('nd-osmid').textContent='OSM Node ID: '+g.osmid;
+
+  const badge=document.getElementById('nd-badge');
+  badge.textContent=g.node_role||'Gateway';
+  badge.style.background='#e8f0fb';
+  badge.style.color='#1b3a6b';
+
+  const gwBadge=document.getElementById('nd-gw-badge');
+  gwBadge.style.display='none';
+
+  document.getElementById('nd-composite').textContent='-';
+  document.getElementById('nd-pct').textContent='Not a scored node';
+  document.getElementById('nd-emergency').textContent='-';
+  document.getElementById('nd-demand').textContent='-';
+
+  const gwSection=document.getElementById('nd-gateway-section');
+  gwSection.style.display='none';
+
+  document.getElementById('nd-facilities').innerHTML='<p style="font-size:11px;color:var(--muted);">No facilities directly assigned to this node.</p>';
+  document.getElementById('nd-bars').innerHTML='';
+  document.getElementById('nd-visits').textContent='-';
+  document.getElementById('nd-logscore').textContent='-';
+}
+
+function showNodeDetail(n){
+  document.getElementById('node-empty').style.display='none';
+  document.getElementById('node-content').style.display='block';
+  document.getElementById('nd-osmid').textContent='OSM Node ID: '+n.osmid;
+
+  const badge=document.getElementById('nd-badge');
+  badge.textContent=n._tier;
+  const bc={Critical:'#c0392b',High:'#e67e22',Medium:'#27ae60',Low:'#2980b9'};
+  const tc={Critical:'#fff',High:'#111',Medium:'#111',Low:'#fff'};
+  badge.style.background=bc[n._tier];
+  badge.style.color=tc[n._tier];
+
+  // Gateway badge hidden pending methodology review
+  const gwBadge=document.getElementById('nd-gw-badge');
+  const osmidStr=String(n.osmid||'');
+  const gwData=gatewayByOsmid[osmidStr];
+  gwBadge.style.display='none';
+
+  document.getElementById('nd-composite').textContent=n._comp.toFixed(2);
+  document.getElementById('nd-pct').textContent=n._pct.toFixed(1)+'th percentile';
+  document.getElementById('nd-emergency').textContent=n._emerg.toFixed(1);
+  document.getElementById('nd-demand').textContent=n._demand.toFixed(3);
+
+  // Gateway section hidden pending methodology review
+  const gwSection=document.getElementById('nd-gateway-section');
+  gwSection.style.display='none';
+
+  const facs=[
+    {label:'Hospitals',source:'Hospitals',count:n.n_hospitals||0,score:n._sh,names:getFacilityNamesForNode(n,'Hospitals',n.names_hospitals),emoji:'🏥'},
+    {label:'NCEM Essential',source:'NCEM',count:n.n_ncem||n.n_ncem_essential||0,score:n._snc,names:getFacilityNamesForNode(n,'NCEM',n.names_ncem),emoji:'🏛'},
+    {label:'Fire Stations',source:'Fire_Stations',count:n.n_fire_stations||0,score:n._sf,names:getFacilityNamesForNode(n,'Fire_Stations',n.names_fire_stations),emoji:'🚒'},
+    {label:'Law Enforcement',source:'Law_Enforcement',count:n.n_law_enforcement||0,score:n._sl,names:getFacilityNamesForNode(n,'Law_Enforcement',n.names_law_enforcement),emoji:'🚔'},
+    {label:'Gas Stations',source:'Gas_Stations',count:n.n_gas_stations||0,score:n._sg,names:getFacilityNamesForNode(n,'Gas_Stations',n.names_gas_stations),emoji:'⛽'},
+    {label:'NCDOT Buildings',source:'NCDOT_Buildings',count:n.n_ncdot_buildings||0,score:n._snb,names:getFacilityNamesForNode(n,'NCDOT_Buildings',n.names_ncdot_buildings),emoji:'🏢'},
+    {label:'NCDOT Lands',source:'NCDOT_Lands',count:n.n_ncdot_lands||0,score:n._snl,names:getFacilityNamesForNode(n,'NCDOT_Lands',n.names_ncdot_lands),emoji:'📍'},
+    {label:'SafeGraph POI',source:'SafeGraph_POI',count:n.n_safegraph_poi||0,score:n._sp,names:getFacilityNamesForNode(n,'SafeGraph_POI',n.names_safegraph_poi||n.names_poi||n.safegraph_poi_names),emoji:'📌'},
+  ];
+
+  document.getElementById('nd-facilities').innerHTML=facs.map(f=>{
+    const nm=f.names?String(f.names).trim():'';
+    const hasNames=nm!==''&&nm!=='nan';
+    const nameHtml=hasNames?`<div class="facility-names-list">${formatNames(nm)}</div>`:'';
+    return `<div class="facility-row"><div class="facility-row-top"><span class="facility-name">${f.emoji} ${f.label}</span><div class="facility-vals"><span class="facility-count">${f.count}</span><span class="facility-score">${f.score>0?f.score.toFixed(1):'-'}</span></div></div>${nameHtml}</div>`;
+  }).join('');
+
+  document.getElementById('nd-bars').innerHTML=[
+    ['Emergency Access',n._emerg,'#2e86de'],
+    ['Demand',n._demand,'#00b894'],
+    ['Composite',n._comp,'#27ae60'],
+  ].map(([lbl,val,col])=>
+    `<div class="score-bar-wrap"><div class="score-bar-header"><span class="score-bar-label">${lbl}</span><span class="score-bar-pct">${val.toFixed(2)}</span></div><div class="score-bar-bg"><div class="score-bar-fill" style="width:${Math.min(val/Math.max(n._comp,1)*100,100).toFixed(1)}%;background:${col}"></div></div></div>`
+  ).join('');
+
+  const vis=+(n.poi_visits_2024_corrected||0);
+  document.getElementById('nd-visits').textContent=vis.toLocaleString();
+  document.getElementById('nd-logscore').textContent=Math.log10(vis+1).toFixed(3);
+}
+
+function formatNames(pipe){
+  if(!pipe) return '';
+  return pipe.split(' | ').filter(Boolean).map(nm=>`· ${nm}`).join('<br>');
+}
+
+function onCompositeChange(changed){
+  const eEl=document.getElementById('w-emergency');
+  const dEl=document.getElementById('w-demand');
+  if(changed==='emergency'){dEl.value=100-+eEl.value;}
+  else{eEl.value=100-+dEl.value;}
+  document.getElementById('wv-emergency').textContent=eEl.value+'%';
+  document.getElementById('wv-demand').textContent=dEl.value+'%';
+  recompute();renderMap();
+}
+
+function onFacilityChange(key){
+  document.getElementById('wv-'+key).textContent=document.getElementById('w-'+key).value;
+  recompute();renderMap();
+}
+
+function resetWeights(){
+  Object.entries(DEFAULTS).forEach(([k,v])=>{
+    document.getElementById('w-'+k).value=v;
+    document.getElementById('wv-'+k).textContent=(k==='emergency'||k==='demand')?v+'%':v;
+  });
+  recompute();renderMap();
+}
+
+function setTopN(n,btn){
+  topN=n;
+  document.querySelectorAll('.topn-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMap();
+}
+
+function updateTierCounts(){
+  let s=topN>0?[...scored].sort((a,b)=>b._comp-a._comp).slice(0,topN):scored;
+  ['Critical','High','Medium','Low'].forEach(t=>{
+    document.getElementById('cnt-'+t.toLowerCase()).textContent=s.filter(n=>n._tier===t).length.toLocaleString();
+  });
+}
+
+function updateStatus(){
+  const sh=topN>0?Math.min(topN,scored.length):scored.length;
+  document.getElementById('status-nodes').textContent=scored.length.toLocaleString()+' nodes loaded';
+  document.getElementById('status-shown').textContent='Showing: '+sh.toLocaleString();
+  const activeGw=Object.keys(gatewayVisible).filter(k=>gatewayVisible[k]).map(k=>{
+    const st=gatewayRenderState[k]||{};
+    return `${k}: ${(st.count||0).toLocaleString()} clustered`;
+  }).join(' · ');
+  document.getElementById('status-gateway').textContent=activeGw||('Gateway nodes: '+gatewayData.length.toLocaleString());
+  const we=document.getElementById('w-emergency').value;
+  const wd=document.getElementById('w-demand').value;
+  document.getElementById('status-weights').textContent=`Weights: ${we}% Emergency / ${wd}% Demand`;
+}
+
+function toggleTier(tier,btn){
+  tierVisible[tier]=!tierVisible[tier];
+  btn.classList.toggle('active',tierVisible[tier]);
+  renderMap();
+}
+
+function exportCSV(){
+  let out=topN>0?[...scored].sort((a,b)=>b._comp-a._comp).slice(0,topN):scored;
+  const h=['osmid','lat','lon','tier','score_composite','score_pct','score_emergency','score_demand','n_hospitals','n_fire_stations','n_law_enforcement','n_ncem','n_gas_stations','n_ncdot_buildings','n_ncdot_lands','n_safegraph_poi','poi_visits_2024_corrected'];
+  const rows=[h.join(','),...out.map(n=>[n.osmid,n.y,n.x,n._tier,n._comp.toFixed(4),n._pct.toFixed(2),n._emerg.toFixed(4),n._demand.toFixed(4),n.n_hospitals||0,n.n_fire_stations||0,n.n_law_enforcement||0,n.n_ncem||n.n_ncem_essential||0,n.n_gas_stations||0,n.n_ncdot_buildings||0,n.n_ncdot_lands||0,n.n_safegraph_poi||0,n.poi_visits_2024_corrected||0].join(','))];
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download=topN>0?`TRIP_top${topN}_nodes.csv`:'TRIP_all_nodes.csv';
+  a.click();
+}
+
+window.addEventListener('load',()=>{initMap();loadData();});
+</script>
+</body>
+</html>
