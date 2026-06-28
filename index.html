@@ -243,8 +243,14 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
       <div class="layer-toggle-row"><input type="checkbox" id="lyr-gas" onchange="toggleFacilityLayer('Gas_Stations')"><div class="layer-dot" style="background:#f9a825"></div><label for="lyr-gas" style="cursor:pointer">Gas Stations</label><span class="layer-count">1,015</span></div>
       <div class="layer-toggle-row"><input type="checkbox" id="lyr-ncdotb" onchange="toggleFacilityLayer('NCDOT_Buildings')"><div class="layer-dot" style="background:#8d6e63"></div><label for="lyr-ncdotb" style="cursor:pointer">NCDOT Buildings</label><span class="layer-count">347</span></div>
       <div class="layer-toggle-row"><input type="checkbox" id="lyr-ncdotl" onchange="toggleFacilityLayer('NCDOT_Lands')"><div class="layer-dot" style="background:#78909c"></div><label for="lyr-ncdotl" style="cursor:pointer">NCDOT Lands</label><span class="layer-count">110</span></div>
-      <div class="layer-toggle-row"><input type="checkbox" id="lyr-ncem" onchange="toggleFacilityLayer('NCEM')"><div class="layer-dot" style="background:#ab47bc"></div><label for="lyr-ncem" style="cursor:pointer">NCEM Essential</label><span class="layer-count">11,051</span></div>
       <div class="layer-toggle-row"><input type="checkbox" id="lyr-poi" onchange="toggleFacilityLayer('SafeGraph_POI')"><div class="layer-dot" style="background:#26a69a"></div><label for="lyr-poi" style="cursor:pointer">SafeGraph POI</label><span class="layer-count">14,650</span></div>
+      <div id="ncem-layer-row" class="layer-toggle-row" style="display:none"><input type="checkbox" id="lyr-ncem" onchange="toggleFacilityLayer('NCEM')"><div class="layer-dot" style="background:#ab47bc"></div><label for="lyr-ncem" style="cursor:pointer">NCEM Essential</label><span class="layer-count">11,051</span></div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
+        <div class="layer-toggle-row" style="margin-bottom:0;">
+          <input type="checkbox" id="chk-ncem-enable" onchange="toggleNCEM(this.checked)">
+          <label for="chk-ncem-enable" style="cursor:pointer;font-size:11px;color:var(--muted);font-style:italic;">Include NCEM facilities in scoring</label>
+        </div>
+      </div>
     </div>
     <div class="weights-scroll">
       <div class="weight-group-label">Composite Weights</div>
@@ -252,13 +258,13 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
       <div class="weight-row"><div class="weight-header"><span class="weight-name">Demand (Visit Activity)</span><span class="weight-val" id="wv-demand">20%</span></div><input type="range" min="0" max="100" value="20" id="w-demand" oninput="onCompositeChange('demand')"><div class="weight-note">Emergency + Demand always sum to 100%</div></div>
       <div class="weight-group-label">Facility Weights</div>
       <div class="weight-row"><div class="weight-header"><span class="weight-name">Hospitals</span><span class="weight-val" id="wv-hospitals">50</span></div><input type="range" min="0" max="100" value="50" id="w-hospitals" oninput="onFacilityChange('hospitals')"></div>
-      <div class="weight-row"><div class="weight-header"><span class="weight-name">NCEM Essential</span><span class="weight-val" id="wv-ncem">40</span></div><input type="range" min="0" max="100" value="40" id="w-ncem" oninput="onFacilityChange('ncem')"></div>
       <div class="weight-row"><div class="weight-header"><span class="weight-name">Fire Stations</span><span class="weight-val" id="wv-fire">35</span></div><input type="range" min="0" max="100" value="35" id="w-fire" oninput="onFacilityChange('fire')"></div>
       <div class="weight-row"><div class="weight-header"><span class="weight-name">Law Enforcement</span><span class="weight-val" id="wv-law">30</span></div><input type="range" min="0" max="100" value="30" id="w-law" oninput="onFacilityChange('law')"></div>
       <div class="weight-row"><div class="weight-header"><span class="weight-name">Gas Stations</span><span class="weight-val" id="wv-gas">20</span></div><input type="range" min="0" max="100" value="20" id="w-gas" oninput="onFacilityChange('gas')"></div>
       <div class="weight-row"><div class="weight-header"><span class="weight-name">NCDOT Buildings</span><span class="weight-val" id="wv-ncdotb">15</span></div><input type="range" min="0" max="100" value="15" id="w-ncdotb" oninput="onFacilityChange('ncdotb')"></div>
-      <div class="weight-row"><div class="weight-header"><span class="weight-name">NCDOT Lands</span><span class="weight-val" id="wv-ncdotl">10</span></div><input type="range" min="0" max="100" value="10" id="w-ncdotl" oninput="onFacilityChange('ncdotl')"></div>
+      <div class="weight-row"><div class="weight-header"><span class="weight-name">NCDOT Lands</span><span class="weight-val" id="wv-ncdotl">5</span></div><input type="range" min="0" max="100" value="5" id="w-ncdotl" oninput="onFacilityChange('ncdotl')"></div>
       <div class="weight-row"><div class="weight-header"><span class="weight-name">SafeGraph POI</span><span class="weight-val" id="wv-poi">5</span></div><input type="range" min="0" max="100" value="5" id="w-poi" oninput="onFacilityChange('poi')"></div>
+      <div id="ncem-weight-row" class="weight-row" style="display:none"><div class="weight-header"><span class="weight-name">NCEM Essential</span><span class="weight-val" id="wv-ncem">40</span></div><input type="range" min="0" max="100" value="40" id="w-ncem" oninput="onFacilityChange('ncem')"></div>
     </div>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="resetWeights()">Reset</button>
@@ -336,7 +342,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
         <table class="wlc-table">
           <tr><th>Data Source</th><th>Total Features</th><th>Used in Scoring</th><th>Excluded</th></tr>
           <tr><td>SafeGraph Points of Interest</td><td>59,289</td><td class="wlc-used-yes">14,650</td><td class="wlc-used-no">44,639</td></tr>
-          <tr><td>NCEM Critical Facilities</td><td>102,746</td><td class="wlc-used-yes">11,051</td><td class="wlc-used-no">91,695</td></tr>
           <tr><td>Hospitals</td><td>26</td><td class="wlc-used-yes">26</td><td class="wlc-used-no">0</td></tr>
           <tr><td>Fire Stations</td><td>356</td><td class="wlc-used-yes">356</td><td class="wlc-used-no">0</td></tr>
           <tr><td>Law Enforcement</td><td>142</td><td class="wlc-used-yes">142</td><td class="wlc-used-no">0</td></tr>
@@ -365,13 +370,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
         <div class="wlc-method-step">
           <div class="wlc-method-num">3</div>
           <div>
-            <div class="wlc-method-title">NCEM Classification</div>
-            <div class="wlc-method-body">NCEM features were classified using occupancy type codes from the HAZUS 6.1 Flood Model Technical Manual. Features are marked eligible for scoring if their occupancy type corresponds to emergency operations, essential services, or critical infrastructure under HAZUS 6.1 definitions. Agricultural buildings are excluded from scoring due to their high density in rural areas, which would introduce geographic bias into node scores unrelated to life-safety function.</div>
-          </div>
-        </div>
-        <div class="wlc-method-step">
-          <div class="wlc-method-num">4</div>
-          <div>
             <div class="wlc-method-title">AADT Conflation</div>
             <div class="wlc-method-body">
               <p style="margin-bottom:7px;">The AADT conflation process transfers NCDOT traffic count values onto the OSM road network. This was necessary because NCDOT AADT segments and OSM road edges do not share a common road identifier.</p>
@@ -396,7 +394,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
           </div>
         </div>
         <div class="wlc-method-step">
-          <div class="wlc-method-num">5</div>
+          <div class="wlc-method-num">4</div>
           <div>
             <div class="wlc-method-title">Facility-to-Network Embedding</div>
             <div class="wlc-method-body">Each facility was assigned to the road network using an edge-based projection procedure. For each facility, the nearest driveable road edge was identified using a spatial index query with expanding search radii (200 m, 500 m, 1,000 m, 2,000 m), followed by true point-to-geometry distance computation. The facility point was then projected perpendicularly onto that edge. Both endpoint nodes of the matched edge received the same weight of 1, reflecting that access direction is unknown and either endpoint independently enables complete access to the facility. Polygon geometries such as NCDOT land parcels were converted to centroids before snapping.</div>
@@ -409,15 +407,14 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
         <p class="wlc-p">Every OSM road network node is scored across two independent dimensions. Storing dimensions independently allows composite weights to be adjusted in the dashboard without rerunning the spatial analysis.</p>
         <p class="wlc-p"><strong>Emergency Access (80%).</strong> A weighted sum of facility counts assigned to each node. Because the embedding procedure produces two records per facility, counts are deduplicated on the combination of facility identifier, node identifier, and data source before aggregation. The weights reflect relative life-safety priority during a flood event:</p>
         <table class="wlc-table">
-          <tr><th>Facility Type</th><th>Weight</th></tr>
+          <tr><th>Facility Type</th><th>Default Weight</th></tr>
           <tr><td>Hospitals</td><td>50</td></tr>
-          <tr><td>NCEM Essential Infrastructure</td><td>40</td></tr>
           <tr><td>Fire Stations</td><td>35</td></tr>
           <tr><td>Law Enforcement</td><td>30</td></tr>
           <tr><td>Gas Stations</td><td>20</td></tr>
           <tr><td>NCDOT Buildings</td><td>15</td></tr>
-          <tr><td>NCDOT Land Parcels</td><td>10</td></tr>
           <tr><td>SafeGraph POI (Essential Tiers 1–3)</td><td>5</td></tr>
+          <tr><td>NCDOT Land Parcels</td><td>5</td></tr>
         </table>
         <p class="wlc-p" style="margin-top:10px;"><strong>Demand (20%).</strong> The corrected 2024 visit count for each node is log-transformed (log base 10) before entering the composite score. This was done to make sure the few extremely busy commercial nodes do not dominate the demand dimension.</p>
         <p class="wlc-p"><strong>Composite score:</strong> (emergency score × 0.80) + (demand score × 0.20).</p>
@@ -473,7 +470,6 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
         <table class="wlc-table">
           <tr><th>Analysis Step</th><th>Runtime</th></tr>
           <tr><td>POI Classification and Visit Count Correction</td><td>2 min</td></tr>
-          <tr><td>NCEM Classification</td><td>1 min</td></tr>
           <tr><td>AADT Conflation</td><td>26 min</td></tr>
           <tr><td>Facility Network Embedding</td><td>45 min</td></tr>
           <tr><td>Node Criticality Scoring</td><td>1 min</td></tr>
@@ -558,11 +554,15 @@ const gatewayVisible={ hard:false, structural:false, gateway:false, both:false }
 const facilityLayerVisible={
   Hospitals:true, Fire_Stations:true, Law_Enforcement:true,
   Gas_Stations:false, NCDOT_Buildings:false, NCDOT_Lands:false,
-  NCEM:false, SafeGraph_POI:false
+  SafeGraph_POI:false
 };
 const tierVisible={Critical:true,High:true,Medium:true,Low:true};
 
-const DEFAULTS={emergency:80,demand:20,hospitals:50,ncem:40,fire:35,law:30,gas:20,ncdotb:15,ncdotl:10,poi:5};
+// ncemEnabled controls whether NCEM participates in scoring and appears in the facility layers.
+// When false, n_ncem is excluded from recompute and the NCEM layer row is hidden.
+let ncemEnabled=false;
+
+const DEFAULTS={emergency:80,demand:20,hospitals:50,fire:35,law:30,gas:20,ncdotb:15,ncdotl:5,poi:5};
 const TIER_COLORS={Critical:'#c0392b',High:'#e67e22',Medium:'#27ae60',Low:'#2980b9'};
 const TIER_RADIUS={Critical:10,High:8,Medium:6,Low:5};
 const TIER_HIT={Critical:18,High:15,Medium:13,Low:11};
@@ -582,7 +582,6 @@ const LAYER_CONFIG={
   Gas_Stations:{color:'#f9a825',label:'Gas Station',emoji:'⛽'},
   NCDOT_Buildings:{color:'#8d6e63',label:'NCDOT Building',emoji:'🏢'},
   NCDOT_Lands:{color:'#78909c',label:'NCDOT Land',emoji:'📍'},
-  NCEM:{color:'#ab47bc',label:'NCEM Facility',emoji:'🏛'},
   SafeGraph_POI:{color:'#26a69a',label:'POI',emoji:'📌'},
 };
 
@@ -648,7 +647,7 @@ function initMap(){
 
   Object.keys(LAYER_CONFIG).forEach(src=>{
     const cfg=LAYER_CONFIG[src];
-    const useClusters=hasCluster&&(src==='NCEM'||src==='SafeGraph_POI'||src==='Gas_Stations');
+    const useClusters=hasCluster&&(src==='SafeGraph_POI'||src==='Gas_Stations');
     if(useClusters){
       facilityLayers[src]=L.markerClusterGroup({
         maxClusterRadius:40,
@@ -662,6 +661,16 @@ function initMap(){
     }
     if(facilityLayerVisible[src]) facilityLayers[src].addTo(map);
   });
+
+  // NCEM layer group initialised separately — not in LAYER_CONFIG by default.
+  // It is added to the map only when the user enables it via toggleNCEM().
+  facilityLayers['NCEM']=hasCluster?L.markerClusterGroup({
+    maxClusterRadius:40,
+    iconCreateFunction:count=>L.divIcon({
+      html:`<div style="background:#ab47bc;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid rgba(255,255,255,0.8)">${count.getChildCount()}</div>`,
+      className:'',iconSize:[28,28]
+    })
+  }):L.layerGroup();
 }
 
 function loadData(){
@@ -887,6 +896,43 @@ function toggleFacilityLayer(src){
   else { map.removeLayer(facilityLayers[src]); }
 }
 
+function toggleNCEM(enabled){
+  ncemEnabled=enabled;
+
+  // Show/hide NCEM layer row in facility layers panel
+  document.getElementById('ncem-layer-row').style.display=enabled?'flex':'none';
+
+  // Show/hide NCEM weight slider
+  document.getElementById('ncem-weight-row').style.display=enabled?'block':'none';
+
+  // If NCEM layer row is being hidden, also uncheck and remove from map
+  if(!enabled){
+    const cb=document.getElementById('lyr-ncem');
+    if(cb) cb.checked=false;
+    if(facilityLayers['NCEM']&&map.hasLayer(facilityLayers['NCEM'])){
+      map.removeLayer(facilityLayers['NCEM']);
+    }
+    facilityLayerVisible['NCEM']=false;
+  }
+
+  // If enabling and NCEM layer hasn't been built yet, build it now
+  if(enabled&&facilityLayers['NCEM']){
+    const hasCluster=typeof L.markerClusterGroup==='function';
+    if(hasCluster&&facilityLayers['NCEM']._leaflet_id===undefined){
+      facilityLayers['NCEM']=L.markerClusterGroup({
+        maxClusterRadius:40,
+        iconCreateFunction:count=>L.divIcon({
+          html:`<div style="background:#ab47bc;color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid rgba(255,255,255,0.8)">${count.getChildCount()}</div>`,
+          className:'',iconSize:[28,28]
+        })
+      });
+    }
+  }
+
+  recompute();
+  renderMap();
+}
+
 function srcToId(src){
   const m={Hospitals:'hospitals',Fire_Stations:'fire',Law_Enforcement:'law',
     Gas_Stations:'gas',NCDOT_Buildings:'ncdotb',NCDOT_Lands:'ncdotl',
@@ -915,7 +961,7 @@ function recompute(){
   const we=+document.getElementById('w-emergency').value/100;
   const wd=+document.getElementById('w-demand').value/100;
   const wH=+document.getElementById('w-hospitals').value;
-  const wNC=+document.getElementById('w-ncem').value;
+  const wNC=ncemEnabled?+document.getElementById('w-ncem').value:0;
   const wF=+document.getElementById('w-fire').value;
   const wL=+document.getElementById('w-law').value;
   const wG=+document.getElementById('w-gas').value;
@@ -924,7 +970,7 @@ function recompute(){
   const wP=+document.getElementById('w-poi').value;
 
   scored=allNodes.map(n=>{
-    const nh=+(n.n_hospitals||0),nnc=+(n.n_ncem||n.n_ncem_essential||0),nf=+(n.n_fire_stations||0),nl=+(n.n_law_enforcement||0),ng=+(n.n_gas_stations||0),nnb=+(n.n_ncdot_buildings||0),nnl=+(n.n_ncdot_lands||0),np=+(n.n_safegraph_poi||0),vis=+(n.poi_visits_2024_corrected||0);
+    const nh=+(n.n_hospitals||0),nnc=ncemEnabled?+(n.n_ncem||n.n_ncem_essential||0):0,nf=+(n.n_fire_stations||0),nl=+(n.n_law_enforcement||0),ng=+(n.n_gas_stations||0),nnb=+(n.n_ncdot_buildings||0),nnl=+(n.n_ncdot_lands||0),np=+(n.n_safegraph_poi||0),vis=+(n.poi_visits_2024_corrected||0);
     const sh=nh*wH,snc=nnc*wNC,sf=nf*wF,sl=nl*wL,sg=ng*wG,snb=nnb*wNB,snl=nnl*wNL,sp=np*wP;
     const emerg=sh+snc+sf+sl+sg+snb+snl+sp;
     const demand=Math.log10(vis+1);
@@ -965,7 +1011,7 @@ function renderMap(){
       const tip=`<div class="node-tooltip">
         <strong style="color:${TIER_COLORS[tier]}">${tier} Node</strong><br>
         Score: ${n._comp.toFixed(1)} &nbsp;·&nbsp; ${n._pct.toFixed(1)}th pct<br>
-        <span style="font-size:10px;color:#8ba8c4">Hosp: ${n.n_hospitals||0} &nbsp; Fire: ${n.n_fire_stations||0} &nbsp; Law: ${n.n_law_enforcement||0} &nbsp; NCEM: ${+(n.n_ncem||n.n_ncem_essential||0)} &nbsp; POI: ${n.n_safegraph_poi||0}</span>
+        <span style="font-size:10px;color:#8ba8c4">Hosp: ${n.n_hospitals||0} &nbsp; Fire: ${n.n_fire_stations||0} &nbsp; Law: ${n.n_law_enforcement||0}${ncemEnabled?' &nbsp; NCEM: '+(+(n.n_ncem||n.n_ncem_essential||0)):''} &nbsp; POI: ${n.n_safegraph_poi||0}</span>
         ${nameLines?`<div class="tt-names">${nameLines}</div>`:''}
       </div>`;
       const hit=L.circleMarker([+n.y,+n.x],{radius:hr,fillColor:'transparent',color:'transparent',weight:0,fillOpacity:0});
@@ -987,11 +1033,11 @@ function buildNameLines(n){
     {emoji:'🏥',label:'Hospitals',source:'Hospitals',count:+(n.n_hospitals||0),names:getFacilityNamesForNode(n,'Hospitals',n.names_hospitals)},
     {emoji:'🚒',label:'Fire',source:'Fire_Stations',count:+(n.n_fire_stations||0),names:getFacilityNamesForNode(n,'Fire_Stations',n.names_fire_stations)},
     {emoji:'🚔',label:'Law',source:'Law_Enforcement',count:+(n.n_law_enforcement||0),names:getFacilityNamesForNode(n,'Law_Enforcement',n.names_law_enforcement)},
-    {emoji:'🏛',label:'NCEM',source:'NCEM',count:+(n.n_ncem||n.n_ncem_essential||0),names:getFacilityNamesForNode(n,'NCEM',n.names_ncem)},
     {emoji:'⛽',label:'Gas',source:'Gas_Stations',count:+(n.n_gas_stations||0),names:getFacilityNamesForNode(n,'Gas_Stations',n.names_gas_stations)},
     {emoji:'🏢',label:'NCDOT Bldg',source:'NCDOT_Buildings',count:+(n.n_ncdot_buildings||0),names:getFacilityNamesForNode(n,'NCDOT_Buildings',n.names_ncdot_buildings)},
     {emoji:'📍',label:'NCDOT Land',source:'NCDOT_Lands',count:+(n.n_ncdot_lands||0),names:getFacilityNamesForNode(n,'NCDOT_Lands',n.names_ncdot_lands)},
     {emoji:'📌',label:'POI',source:'SafeGraph_POI',count:+(n.n_safegraph_poi||0),names:getFacilityNamesForNode(n,'SafeGraph_POI',n.names_safegraph_poi||n.names_poi||n.safegraph_poi_names)},
+    ...(ncemEnabled?[{emoji:'🏛',label:'NCEM',source:'NCEM',count:+(n.n_ncem||n.n_ncem_essential||0),names:getFacilityNamesForNode(n,'NCEM',n.names_ncem)}]:[]),
   ];
   src.forEach(s=>{
     if(s.count===0) return;
@@ -1066,13 +1112,13 @@ function showNodeDetail(n){
 
   const facs=[
     {label:'Hospitals',source:'Hospitals',count:n.n_hospitals||0,score:n._sh,names:getFacilityNamesForNode(n,'Hospitals',n.names_hospitals),emoji:'🏥'},
-    {label:'NCEM Essential',source:'NCEM',count:n.n_ncem||n.n_ncem_essential||0,score:n._snc,names:getFacilityNamesForNode(n,'NCEM',n.names_ncem),emoji:'🏛'},
     {label:'Fire Stations',source:'Fire_Stations',count:n.n_fire_stations||0,score:n._sf,names:getFacilityNamesForNode(n,'Fire_Stations',n.names_fire_stations),emoji:'🚒'},
     {label:'Law Enforcement',source:'Law_Enforcement',count:n.n_law_enforcement||0,score:n._sl,names:getFacilityNamesForNode(n,'Law_Enforcement',n.names_law_enforcement),emoji:'🚔'},
     {label:'Gas Stations',source:'Gas_Stations',count:n.n_gas_stations||0,score:n._sg,names:getFacilityNamesForNode(n,'Gas_Stations',n.names_gas_stations),emoji:'⛽'},
     {label:'NCDOT Buildings',source:'NCDOT_Buildings',count:n.n_ncdot_buildings||0,score:n._snb,names:getFacilityNamesForNode(n,'NCDOT_Buildings',n.names_ncdot_buildings),emoji:'🏢'},
     {label:'NCDOT Lands',source:'NCDOT_Lands',count:n.n_ncdot_lands||0,score:n._snl,names:getFacilityNamesForNode(n,'NCDOT_Lands',n.names_ncdot_lands),emoji:'📍'},
     {label:'SafeGraph POI',source:'SafeGraph_POI',count:n.n_safegraph_poi||0,score:n._sp,names:getFacilityNamesForNode(n,'SafeGraph_POI',n.names_safegraph_poi||n.names_poi||n.safegraph_poi_names),emoji:'📌'},
+    ...(ncemEnabled?[{label:'NCEM Essential',source:'NCEM',count:n.n_ncem||n.n_ncem_essential||0,score:n._snc,names:getFacilityNamesForNode(n,'NCEM',n.names_ncem),emoji:'🏛'}]:[]),
   ];
 
   document.getElementById('nd-facilities').innerHTML=facs.map(f=>{
@@ -1120,7 +1166,14 @@ function resetWeights(){
     document.getElementById('w-'+k).value=v;
     document.getElementById('wv-'+k).textContent=(k==='emergency'||k==='demand')?v+'%':v;
   });
-  recompute();renderMap();
+  // Reset NCEM to disabled state
+  const ncemChk=document.getElementById('chk-ncem-enable');
+  if(ncemChk&&ncemChk.checked){
+    ncemChk.checked=false;
+    toggleNCEM(false);
+  } else {
+    recompute();renderMap();
+  }
 }
 
 function setTopN(n,btn){
