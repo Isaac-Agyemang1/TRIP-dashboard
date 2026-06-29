@@ -421,10 +421,10 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
         <p class="wlc-p"><strong>Tier assignment.</strong> Percentile ranks are computed only over nodes with a composite score greater than zero. The large population of zero-score nodes is assigned directly to the Low tier. Thresholds applied to the non-zero population:</p>
         <table class="wlc-table">
           <tr><th>Tier</th><th>Threshold</th><th>Count</th></tr>
-          <tr><td style="color:#c0392b;font-weight:700;">Critical</td><td>95th percentile and above (top 5%)</td><td>787</td></tr>
-          <tr><td style="color:#e67e22;font-weight:700;">High</td><td>75th to 95th percentile</td><td>3,289</td></tr>
-          <tr><td style="color:#27ae60;font-weight:700;">Medium</td><td>40th to 75th percentile</td><td>5,400</td></tr>
-          <tr><td style="color:#2980b9;font-weight:700;">Low</td><td>Below 40th percentile or zero score</td><td>106,284</td></tr>
+          <tr><td style="color:#c0392b;font-weight:700;">Critical</td><td>95th percentile and above (top 5%)</td><td>620</td></tr>
+          <tr><td style="color:#e67e22;font-weight:700;">High</td><td>75th to 95th percentile</td><td>2,482</td></tr>
+          <tr><td style="color:#27ae60;font-weight:700;">Medium</td><td>40th to 75th percentile</td><td>4,341</td></tr>
+          <tr><td style="color:#2980b9;font-weight:700;">Low</td><td>Below 40th percentile or zero score</td><td>108,317</td></tr>
         </table>
       </div>
 
@@ -432,13 +432,13 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
         <div class="wlc-section-title">Gateway and Chokepoint Analysis</div>
         <p class="wlc-p">The node criticality analysis identifies locations that are important because of the facilities located near them, such as hospitals, emergency services, government facilities, and other essential destinations. The Gateway and Chokepoint Analysis provides a complementary perspective by identifying locations that are important because of the access they provide to those destinations.</p>
         <p class="wlc-p">A node may have no facilities directly assigned to it and still be important. Some nodes act as access-support locations that help connect communities to hospitals, emergency facilities, shelters, and other Critical destinations. Disruption at these locations could affect access to important services across the transportation network.</p>
-        <p class="wlc-p">The analysis used 814 Critical destinations consisting of all 787 Critical-tier nodes identified under the default scoring configuration, together with 27 hospital nodes that scored below the Critical threshold. The destination set is fixed to the default scoring configuration.</p>
+        <p class="wlc-p">The analysis used 647 Critical destinations consisting of all 620 Critical-tier nodes identified under the default scoring configuration, together with 27 hospital nodes that scored below the Critical threshold. The destination set is fixed to the default scoring configuration.</p>
 
         <div class="wlc-method-step">
           <div class="wlc-method-num">1</div>
           <div>
             <div class="wlc-method-title">Critical Destination Access Support</div>
-            <div class="wlc-method-body">For each of the 814 Critical destinations, Dijkstra's shortest path algorithm was run on the reversed transportation network with a 50 km search distance. This identifies the road nodes that contribute to access to each Critical destination. Nodes receive higher scores when they repeatedly appear across access routes serving multiple Critical destinations. The resulting metric highlights locations that support connectivity to essential facilities throughout the study area.</div>
+            <div class="wlc-method-body">For each of the 647 Critical destinations, Dijkstra's shortest path algorithm was run on the reversed transportation network with a 50 km search distance. This identifies the road nodes that contribute to access to each Critical destination. Nodes receive higher scores when they repeatedly appear across access routes serving multiple Critical destinations. The resulting metric highlights locations that support connectivity to essential facilities throughout the study area.</div>
           </div>
         </div>
         <div class="wlc-method-step">
@@ -481,7 +481,17 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
       </div>
 
       <div class="wlc-section">
-        <div class="wlc-section-title">Planned Methodology Improvements</div>
+        <div class="wlc-section-title">Planned Methodology Improvements and Next Steps</div>
+        <div class="wlc-improve-item">
+          <div class="wlc-improve-tag">Next Steps</div>
+          <div class="wlc-improve-title">Alternate Route and Detour Analysis</div>
+          <div class="wlc-improve-body">Identifying non-overlapping alternate routes between origins and critical destinations using route diversification methods, including paired alternative segments and contraction hierarchies.</div>
+        </div>
+        <div class="wlc-improve-item">
+          <div class="wlc-improve-tag">Next Steps</div>
+          <div class="wlc-improve-title">Betweenness Centrality and Shortest Path Trees</div>
+          <div class="wlc-improve-body">One-to-all shortest path trees rooted at critical destinations will be used to compute destination-specific betweenness centrality, identifying nodes that are disproportionately relied upon across many routes to the same destination.</div>
+        </div>
         <div class="wlc-improve-item">
           <div class="wlc-improve-tag">POI Deduplication</div>
           <div class="wlc-improve-title">Polygon Footprint Overlap Detection</div>
@@ -508,7 +518,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25);}
         <div class="wlc-section-title">Summary Statistics</div>
         <div class="wlc-stats">
           <div class="wlc-stat"><div class="wlc-stat-val">115,760</div><div class="wlc-stat-lbl">Nodes Scored</div></div>
-          <div class="wlc-stat"><div class="wlc-stat-val">787</div><div class="wlc-stat-lbl">Critical Destinations</div></div>
+          <div class="wlc-stat"><div class="wlc-stat-val">620</div><div class="wlc-stat-lbl">Critical Destinations</div></div>
         </div>
       </div>
     </div>
